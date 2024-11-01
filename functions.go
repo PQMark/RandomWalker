@@ -7,7 +7,7 @@ import (
 	"math"
 	"github.com/malaschitz/randomForest"
 )
-
+//
 type Dataset struct {
 	Instance []*Instance
 	Features []string
@@ -26,6 +26,7 @@ type FeatureImportance struct {
 }
 
 // d does not contain label 
+// broken
 func Boruta(d, dLabel *Dataset, numIteration, numEstimators int, alpha float64) ([]FeatureImportance, error) {
 	removedFeatures := make(map[string]bool)		// features marked as unimportant
 	importantFeatures := make(map[string]bool)		// features marked as important
@@ -108,7 +109,7 @@ func Boruta(d, dLabel *Dataset, numIteration, numEstimators int, alpha float64) 
 	return featureImportances, nil
 }
 
-
+// fine
 func (d *Dataset) Initialize(features map[string]struct{}) {
 	for f := range features {
 		f_shadow := "shadow_" + f 
@@ -131,6 +132,7 @@ func (d *Dataset) Initialize(features map[string]struct{}) {
 	}
 }
 
+// fine 
 func (d *Dataset) ShuffleShadowFeatures(features map[string]struct{}) {
 
 	for f := range features {
@@ -158,6 +160,7 @@ func (d *Dataset) ShuffleShadowFeatures(features map[string]struct{}) {
 	}
 }
 
+// broken
 func (d *Dataset) trainRandomForest(numEstimators int) (map[string]float64, error) {
 	instances, err := d.convertToInstances()
 	if err != nil {
@@ -180,6 +183,8 @@ func (d *Dataset) trainRandomForest(numEstimators int) (map[string]float64, erro
 	return importances, nil
 }
 
+
+// fine 
 func CheckFeatures(allFeatures []string, features map[string]struct{}) {
 	allFeaturesSet := make(map[string]struct{})
     
@@ -202,6 +207,7 @@ func CheckFeatures(allFeatures []string, features map[string]struct{}) {
 
 }
 
+// fine 
 func ConvertToData(d *Dataset, featuresToConsider map[string]struct{}) [][]float64 {
 	
 	data := make([][]float64, len(d.Instance))
