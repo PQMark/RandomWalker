@@ -27,10 +27,10 @@ type FeatureImportance struct {
 
 // d does not contain label 
 // broken
-func Boruta(d, dLabel *Dataset, numIteration, numEstimators int, alpha float64) ([]FeatureImportance, error) {
+func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators int, alpha float64) ([]FeatureImportance, error) {
 	removedFeatures := make(map[string]bool)		// features marked as unimportant
 	importantFeatures := make(map[string]bool)		// features marked as important
-	featuresToConsider := make(map[string]struct{})		// features remians tentative
+	featuresToConsider := make([]string)		// features remians tentative
 	featureImportanceScores := make(map[string][]float64)
 
 	// Initialize featuresToConsider to all the features 
@@ -60,7 +60,7 @@ func Boruta(d, dLabel *Dataset, numIteration, numEstimators int, alpha float64) 
 		// Prepare training data and labels for training process
 		// convert the data to [][]float64 type 
 		trainX := ConvertToData(d, featuresToConsider)
-		trainY := 
+			//trainY is dLabel
 
 		// Train the RF model and extract the importance score 
 		// importances: map[string][]float64
@@ -110,8 +110,8 @@ func Boruta(d, dLabel *Dataset, numIteration, numEstimators int, alpha float64) 
 }
 
 // fine
-func (d *Dataset) Initialize(features map[string]struct{}) {
-	for f := range features {
+func (d *Dataset) Initialize(features []string) {
+	for _, f := range features {
 		f_shadow := "shadow_" + f 
 		d.Features = append(d.Features, f_shadow)
 
@@ -133,9 +133,9 @@ func (d *Dataset) Initialize(features map[string]struct{}) {
 }
 
 // fine 
-func (d *Dataset) ShuffleShadowFeatures(features map[string]struct{}) {
+func (d *Dataset) ShuffleShadowFeatures(features []string) {
 
-	for f := range features {
+	for _, f := range features {
 		f_shadow := "shadow_" + f 
 
 		// values stores the values of a feature 
@@ -185,7 +185,7 @@ func (d *Dataset) trainRandomForest(numEstimators int) (map[string]float64, erro
 
 
 // fine 
-func CheckFeatures(allFeatures []string, features map[string]struct{}) {
+func CheckFeatures(allFeatures []string, features []string) {
 	allFeaturesSet := make(map[string]struct{})
     
 	for _, feature := range allFeatures {
@@ -208,26 +208,24 @@ func CheckFeatures(allFeatures []string, features map[string]struct{}) {
 }
 
 // fine 
-func ConvertToData(d *Dataset, featuresToConsider map[string]struct{}) [][]float64 {
+func ConvertToData(d *Dataset, featuresToConsider []string) [][]float64 {
 	
 	data := make([][]float64, len(d.Instance))
 
-	for _, instance := range d.Instance {
+	for i, instance := range d.Instance {
 		data[i] = make([]float64, 0, 2 * len(featuresToConsider))
 
 		// Append features 
 		for _, f := range featuresToConsider {
-			data = append(data, d.Instance[f])
+			data[i] = append(data[i], instance.Features[f])
 		}
 
 		// Append shadows 
 		for _, f := range featuresToConsider {
 			shadowF := "shadow_" + f
-			data = append(data, d.Instance[shadowF])
+			data[i] = append(data[i], instance.Features[shadowF])
 		}
 	}
 
 	return data
 }
-
-
