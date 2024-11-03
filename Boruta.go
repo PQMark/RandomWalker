@@ -28,7 +28,7 @@ type FeatureImportance struct {
 // d does not contain label 
 // broken
 // numIteration: The maximum 
-func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators int, alpha float64) ([]string, map[string]int) {
+func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators int) ([]string, map[string]int) {
 	removedFeatures := make(map[string]bool)		// features marked as unimportant
 
 	var featuresToConsider []string					// features remians tentative
@@ -73,7 +73,9 @@ func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators int, alpha flo
 			trainRandomForest(d, dLabel, featuresToConsider, numEstimators, results)
 		}
 
+		fmt.Println(results)
 		threshold := CalculateThreshold(numIteration)
+		fmt.Println("Bionomial Threshold:", threshold)
 
 		// Remove unimportant features 
 		for f, val := range results {
@@ -82,8 +84,10 @@ func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators int, alpha flo
 				// record the feature removed 
 				removedFeatures[f] = true
 
+				fmt.Println("Delete Feature:", f)
+
 				// remove the feature from featuresToConsider
-				DeleteFromString(f, featuresToConsider)
+				featuresToConsider = DeleteFromString(f, featuresToConsider)
 
 			}
 		}
@@ -169,7 +173,7 @@ func trainRandomForest(d *Dataset, Y []int, features []string, numEstimators int
 
 	// Find the threshold of shadow features 
 	shadow_IS := 0.0
-	featuresNum := len(x[0])
+	featuresNum := len(x[0]) / 2 
 
 	for i:=featuresNum; i < 2 * featuresNum; i++ {
 		importanceScore := forest.FeatureImportance[i]
@@ -178,7 +182,7 @@ func trainRandomForest(d *Dataset, Y []int, features []string, numEstimators int
 			shadow_IS = importanceScore
 		}
 	}
-	
+
 	// Update the results 
 	numFeatures := len(x[0])
 
@@ -239,7 +243,7 @@ func ConvertToData(d *Dataset, featuresToConsider []string) [][]float64 {
 	return data
 }
 
-// not tested 
+// num should below 50 to avoid integer overflow 
 func CalculateThreshold(num int) int {
 	// Null hypothesis: Importance score of a feature exceeds a shadow by random chance --> p_success = 0.5
 	p := 0.5
@@ -247,17 +251,19 @@ func CalculateThreshold(num int) int {
 	// set significance to 0.05
 	significance := 0.05
 
-	// Initial: 0 success 
-	cp := math.Pow(1 - p, float64(num))
+	// Initial: 0 success
+	current_p := math.Pow(1 - p, float64(num))
+	cdf := current_p
 
 	for k := 0; k <= num; k++ {
 		
-		if 1 - cp <= significance {
+		if 1 - cdf <= significance {
 			return k
 		}
 
 		// Otherwise keep incrementing k 
-		cp *= (float64(num - k) * p) / (float64(k+1) * (1 - p))
+		current_p *= (float64(num - k) * p) / (float64(k+1) * (1 - p))
+		cdf += current_p
 	}
 
 	return num
