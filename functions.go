@@ -60,7 +60,7 @@ func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators int, alpha flo
 		// Check the features match with shadows
 		CheckFeatures(d.Features, featuresToConsider)
 
-		var results map[string]int
+		results := make(map[string]int)
 
 		// Train the RF model numIteration times
 		for i:=0; i<numIteration; i++ {
@@ -261,4 +261,52 @@ func CalculateThreshold(num int) int {
 	}
 
 	return num
+}
+
+// fine
+func DeepCopy(d *Dataset, features []string) *Dataset {
+	copyDataset := &Dataset{
+		Features: features,
+		Label: d.Label,
+	}
+
+	for _, instance := range d.Instance {
+		copyInstance := &Instance{
+			Features: make(map[string]float64),
+			Label: instance.Label,
+		}
+
+		// Iterate over and append the selected features
+		for _, feature := range features {
+			if val, exist := instance.Features[feature]; exist {
+				copyInstance.Features[feature] = val
+			}
+		}
+
+		// Add the new instance to the copied dataset 
+		copyDataset.Instance = append(copyDataset.Instance, copyInstance)
+	}
+
+	return copyDataset
+}
+
+// fine
+func DeleteFromString(f string, features []string) []string {
+	// Find the index of f 
+	index := -1 
+	for i, feature := range features {
+		if feature == f {
+			index = i 
+			break
+		}
+	}
+
+	// Panic if f is not found 
+	if index == -1 {
+		panic(fmt.Sprintf("Cannot delete '%s' since it is not found", f))
+	} else {
+		features = append(features[:index], features[index+1: ]...)
+	}
+	
+	return features
 }
