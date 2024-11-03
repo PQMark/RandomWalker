@@ -3,7 +3,6 @@ package main
 import (
 	"math/rand"
 	"fmt"
-	"strings"
 	"math"
 	"github.com/malaschitz/randomForest"
 )
@@ -25,88 +24,79 @@ type FeatureImportance struct {
 	ImportanceStd float64 
 }
 
+// Not tested
 // d does not contain label 
 // broken
-func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators int, alpha float64) ([]FeatureImportance, error) {
+// numIteration: The maximum 
+func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators int, alpha float64) ([]string, map[string]int) {
 	removedFeatures := make(map[string]bool)		// features marked as unimportant
-	importantFeatures := make(map[string]bool)		// features marked as important
-	featuresToConsider := make([]string)		// features remians tentative
-	featureImportanceScores := make(map[string][]float64)
+
+	var featuresToConsider []string					// features remians tentative
+	
+	// featureImportanceScores := make(map[string][]float64)
 
 	// Initialize featuresToConsider to all the features 
 	for _, name := range d.Features {
-		featuresToConsider[name] = struct{}{}
+		featuresToConsider = append(featuresToConsider, name)
 	}
 
-	// Initialize the dataset with shadow features 
-	d.Initialize(featuresToConsider)
-
 	//check the size of training data and labels
-	if len(d.Instance) != len(dLabel.Instance) {
+	if len(d.Instance) != len(dLabel) {
 		panic("Unequal size of training set and label set")
 	} 
 
-	iteration := 0
-	for iteration <= numIteration {
-		iteration ++
-		fmt.Println("Boruta Iteration %d:\n", iteration)
+	run := 0
+	for {
+		run ++
+
+		oldNum := len(featuresToConsider)
+
+		// Make a copy of the data with features to consider
+		d := DeepCopy(d, featuresToConsider)
+
+		// Initialize the dataset with shadow features 
+		d.Initialize(featuresToConsider)
 
 		// Check the features match with shadows
 		CheckFeatures(d.Features, featuresToConsider)
 
-		// Shuffle Shadow features
-		d.ShuffleShadowFeatures(featuresToConsider)
+		var results map[string]int
 
-		// Prepare training data and labels for training process
-		// convert the data to [][]float64 type 
-		trainX := ConvertToData(d, featuresToConsider)
-			//trainY is dLabel
+		// Train the RF model numIteration times
+		for i:=0; i<numIteration; i++ {
+			fmt.Println("Boruta run:", run, "/", i)
+			
+			// Shuffle Shadow features
+			d.ShuffleShadowFeatures(featuresToConsider)
 
-		// Train the RF model and extract the importance score 
-		// importances: map[string][]float64
-		importances, err := d.trainRandomForest(numEstimators)
-		if err != nil {
-			return nil, err
+			// Train the model and update the results 
+			trainRandomForest(d, dLabel, featuresToConsider, numEstimators, results)
 		}
 
-		for feature, importance := range importances {
-			if ! strings.HasPrefix(feature, "shadow") {
-				featureImportanceScores[feature] = append(featureImportanceScores[feature], importance)
+		threshold := CalculateThreshold(numIteration)
+
+		// Remove unimportant features 
+		for f, val := range results {
+			if val < threshold {
+				
+				// record the feature removed 
+				removedFeatures[f] = true
+
+				// remove the feature from featuresToConsider
+				DeleteFromString(f, featuresToConsider)
+
 			}
 		}
 
-		// Find out the important, unimportant and tentative features from the featureImportanceScores
-		imp, unimp := EvaluateFeatures(featureImportanceScores)
-
-		for _, f := range imp {
-			importantFeatures[f] = true
+		// Converge if there is less than three features or no update any more
+		if len(featuresToConsider) < 3 || oldNum == len(featuresToConsider) {
+			fmt.Println("Converged.")
 			
-			// delete the feature from tentative map 
-			delete(featuresToConsider, f)
-		}
-
-		for _, f := range unimp {
-			removedFeatures[f] = true
-
-			// delete the feature from tentative map 
-			delete(featuresToConsider, f)
-		}
-
-		// Remove shadow features because we'll have new shawdows added each iteration
-		d.removeShadow()
-
-		// Converge if there is no elements in tentative 
-		if len(featuresToConsider) == 0 {
-			fmt.Println("No more tentative features. Converged.")
-			break
+			return featuresToConsider, results
 		}
 
 	}
 
-	// Rank the features based on importance score 
-	featureImportances := Rank(featureImportanceScores)
-
-	return featureImportances, nil
 }
 
 // fine
@@ -160,27 +150,46 @@ func (d *Dataset) ShuffleShadowFeatures(features []string) {
 	}
 }
 
-// broken
-func (d *Dataset) trainRandomForest(numEstimators int) (map[string]float64, error) {
-	instances, err := d.convertToInstances()
-	if err != nil {
-		return nil, err
+// Not tested 
+func trainRandomForest(d *Dataset, Y []int, features []string, numEstimators int, results map[string]int) {
+	
+	// Prepare training data and labels for training process
+	// convert the data to [][]float64 type 
+	x := ConvertToData(d, features)
+	//trainY is dLabel
+
+	forest := randomforest.Forest{
+		Data: randomforest.ForestData{
+			X: x,
+			Class: Y,
+		},
 	}
 
-	// Use square root of the number features for greater tree diversity; Higher bias for lower variance
-	numFeatures := int(math.Sqrt(float64(len(d.Features))))
-	rf := ensemble.NewRandomForest(numEstimators, numFeatures)
+	forest.Train(numEstimators)
 
-	// Fit the model 
-	err = rf.Fit(instances) 
-	if err != nil {
-		return nil, err
+	// Find the threshold of shadow features 
+	shadow_IS := 0.0
+	featuresNum := len(x[0])
+
+	for i:=featuresNum; i < 2 * featuresNum; i++ {
+		importanceScore := forest.FeatureImportance[i]
+
+		if importanceScore > shadow_IS {
+			shadow_IS = importanceScore
+		}
 	}
+	
+	// Update the results 
+	numFeatures := len(x[0])
 
-	// Get feature importance from the model 
-	importances := getFeatureImportances(rf)
+	for i:=0; i<numFeatures; i++ {
+		if forest.FeatureImportance[i] > shadow_IS {
 
-	return importances, nil
+			featureName := d.Features[i]
+			results[featureName] ++
+
+		}
+	}
 }
 
 
@@ -192,7 +201,7 @@ func CheckFeatures(allFeatures []string, features []string) {
         allFeaturesSet[feature] = struct{}{}
     }
 
-    for feature := range features {
+    for _, feature := range features {
         // Check if feature is in allFeaturesSet
         if _, exists := allFeaturesSet[feature]; !exists {
             panic(fmt.Sprintf("Feature '%s' is not in allFeatures", feature))
@@ -228,4 +237,28 @@ func ConvertToData(d *Dataset, featuresToConsider []string) [][]float64 {
 	}
 
 	return data
+}
+
+// not tested 
+func CalculateThreshold(num int) int {
+	// Null hypothesis: Importance score of a feature exceeds a shadow by random chance --> p_success = 0.5
+	p := 0.5
+
+	// set significance to 0.05
+	significance := 0.05
+
+	// Initial: 0 success 
+	cp := math.Pow(1 - p, float64(num))
+
+	for k := 0; k <= num; k++ {
+		
+		if 1 - cp <= significance {
+			return k
+		}
+
+		// Otherwise keep incrementing k 
+		cp *= (float64(num - k) * p) / (float64(k+1) * (1 - p))
+	}
+
+	return num
 }
