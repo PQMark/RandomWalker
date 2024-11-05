@@ -2,10 +2,20 @@ package main
 
 import (
 	"fmt"
+	"os/exec"
+	"os"
 	"math/rand"
 )
 
 func main() {
+	
+	// TestSyntheziedData()
+
+	TestImage()
+	
+}
+
+func TestSyntheziedData() {
 	numInstances := 1000
 	dataset := &Dataset{
         Features: []string{"x1", "x2", "x3", "x4", "x5", "noise1", "noise2"},
@@ -61,8 +71,37 @@ func main() {
     numEstimators := 100
     // alpha := 0.05
 
-    selectedFeatures, featureImportances := Boruta(dataset, labels, numIteration, numEstimators)
+    selectedFeatures, finalResult, featureImportances := Boruta(dataset, labels, numIteration, numEstimators)
 
 	fmt.Println("Selected Features:", selectedFeatures)
+	fmt.Println("Results:", finalResult)
     fmt.Println("Feature Importances:", featureImportances)
+}
+
+func TestImage() {
+	num := 80
+	features := []int {
+		1, 2, 
+	}
+	d, l := PrepareMnistData(num, features)
+	fmt.Println(l)
+
+	if err := Write2Json(d, "MNIST.json"); err != nil {
+		fmt.Println("Error writing JSON:", err)
+	}
+
+	selectedFeatures, finalResult, featureImportances := Boruta(d, l, 50, 150)
+	fmt.Println(selectedFeatures)
+	fmt.Println(finalResult)
+	fmt.Println(featureImportances)
+
+	if err := Write2Json(featureImportances, "MNIST_Output.json"); err != nil {
+		fmt.Println("Error writing JSON:", err)
+	}
+
+	cmd := exec.Command("python3", "scripts/visualization.py")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Run()
+
 }

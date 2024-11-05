@@ -3,6 +3,9 @@ module github.com/PQMark/RandomWalker
 go 1.22.4
 
 require (
+	github.com/petar/GoMNIST v0.0.0-20150320212226-2fbe10d0fa63 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/po3rin/gomnist v0.0.0-20190729090533-a707d482e31e // indirect
 	github.com/malaschitz/randomForest v0.0.0-20240228214944-c64ffe1648e0
 	github.com/sjwhitworth/golearn v0.0.0-20221228163002-74ae077eafb2
 )
