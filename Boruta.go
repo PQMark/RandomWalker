@@ -28,12 +28,12 @@ type FeatureImportance struct {
 // d does not contain label 
 // broken
 // numIteration: The maximum 
-func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators int) ([]string, map[string]int) {
+func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators int) ([]string, map[string]int, map[string]float64) {
 	removedFeatures := make(map[string]bool)		// features marked as unimportant
 
 	var featuresToConsider []string					// features remians tentative
 	
-	// featureImportanceScores := make(map[string][]float64)
+	featureImportances := make(map[string]float64)
 
 	// Initialize featuresToConsider to all the features 
 	for _, name := range d.Features {
@@ -96,7 +96,24 @@ func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators int) ([]string
 		if len(featuresToConsider) < 3 || oldNum == len(featuresToConsider) {
 			fmt.Println("Converged.")
 			
-			return featuresToConsider, results
+			// Train a RF with selected features 
+			x := ConvertToData(d, featuresToConsider)
+
+			forestWithFeatures := randomforest.Forest{
+				Data: randomforest.ForestData{
+					X: x,
+					Class: dLabel,
+				},
+			}
+
+			forestWithFeatures.Train(300)
+
+			for i := 0; i < len(featuresToConsider); i ++ {
+				featureName := d.Features[i]
+				featureImportances[featureName] = forestWithFeatures.FeatureImportance[i]
+			}
+			
+			return featuresToConsider, results, featureImportances
 		}
 
 	}
@@ -154,7 +171,7 @@ func (d *Dataset) ShuffleShadowFeatures(features []string) {
 	}
 }
 
-// Not tested 
+// Fine
 func trainRandomForest(d *Dataset, Y []int, features []string, numEstimators int, results map[string]int) {
 	
 	// Prepare training data and labels for training process
@@ -184,15 +201,17 @@ func trainRandomForest(d *Dataset, Y []int, features []string, numEstimators int
 	}
 
 	// Update the results 
-	numFeatures := len(x[0])
+	// numFeatures := len(x[0])
 
-	for i:=0; i<numFeatures; i++ {
+	for i:=0; i<featuresNum; i++ {
+		featureName := d.Features[i]
+
 		if forest.FeatureImportance[i] > shadow_IS {
-
-			featureName := d.Features[i]
 			results[featureName] ++
+		} else if _, exists := results[featureName]; !exists {
+            results[featureName] = 0 
+        }
 
-		}
 	}
 }
 
