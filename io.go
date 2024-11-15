@@ -81,7 +81,7 @@ func SampleInstance(num int, numbers []int, labelIndices map[int][]int) []int {
 	}
 
 	selectedIndices := []int{}
-	rand.Seed(46)  // 36  // 31:18
+	rand := rand.New(rand.NewSource(int64(46)))  	// 36  // 31:18
 
 	for label, count := range allocation {
 

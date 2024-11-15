@@ -24,11 +24,10 @@ type FeatureImportance struct {
 	ImportanceStd float64 
 }
 
-// Not tested
+// Fine on toy dataset 
 // d does not contain label 
-// broken
 // numIteration: The maximum 
-func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators int) ([]string, map[string]int, map[string]float64) {
+func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) ([]string, map[string]int, map[string]float64) {
 	removedFeatures := make(map[string]bool)		// features marked as unimportant
 
 	var featuresToConsider []string					// features remians tentative
@@ -70,7 +69,7 @@ func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators int) ([]string
 			d.ShuffleShadowFeatures(featuresToConsider)
 
 			// Train the model and update the results 
-			trainRandomForest(d, dLabel, featuresToConsider, numEstimators, results)
+			trainRandomForest(d, dLabel, featuresToConsider, numEstimators, maxDepth, numLeaves, results)
 		}
 
 		fmt.Println(results)
@@ -172,7 +171,7 @@ func (d *Dataset) ShuffleShadowFeatures(features []string) {
 }
 
 // Fine
-func trainRandomForest(d *Dataset, Y []int, features []string, numEstimators int, results map[string]int) {
+func trainRandomForest(d *Dataset, Y []int, features []string, numEstimators, maxDepth, numLeaves int, results map[string]int) {
 	
 	// Prepare training data and labels for training process
 	// convert the data to [][]float64 type 
@@ -184,6 +183,8 @@ func trainRandomForest(d *Dataset, Y []int, features []string, numEstimators int
 			X: x,
 			Class: Y,
 		},
+		MaxDepth: maxDepth,
+		LeafSize: numLeaves,
 	}
 
 	forest.Train(numEstimators)

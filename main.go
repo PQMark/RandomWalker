@@ -5,14 +5,75 @@ import (
 	"os/exec"
 	"os"
 	"math/rand"
+    "github.com/malaschitz/randomForest"
 )
+
+type FeaturesF1 struct{
+    FeatureSelected []string
+    F1 float64
+}
 
 func main() {
 	
 	// TestSyntheziedData()
 
-	TestImage()
+	// TestImage()
+
+    TestSyntheziedDataWithOptimization()
 	
+}
+
+func TestSyntheziedDataWithOptimization() {
+    dataset, label := createToyDataset()
+
+    // Nested CV 
+
+    // 5 fold CV
+    numFolds := 5
+    results := make([]FeaturesF1, numFolds)
+
+    dataFolds, labelFolds := FoldSplit(dataset, label, numFolds)
+    
+    for i := 0; i < numFolds; i ++ {
+        // Get Inner train & Outer test 
+        innerTrain, innerLabel, outerTest, outerLabel := GetFoldData(dataFolds, labelFolds, i)
+
+        // 10 fold CV for inner train (HP Optimization)
+        // Define grid search space 
+        hyperGrid := hyperparameterGridBoruta(int(float64(len(innerLabel)) * 0.9))
+        bestParams, bestF1 := GridSearchParallel(innerTrain, innerLabel, 10, 8, hyperGrid)
+
+        fmt.Printf("Best Hyperparameters - NTrees: %d, MaxDepth: %d, LeafSize: %d\n", bestParams.NTrees, bestParams.MaxDepth, bestParams.LeafSize)
+        fmt.Printf("Best F1 Score: %.2f\n", bestF1)
+
+        // Use the tuned HPs for RF in Boruta
+        featureSelected, _, _ := Boruta(innerTrain, innerLabel, 50, bestParams.NTrees, bestParams.MaxDepth, bestParams.LeafSize)
+
+        // Train a RF with selected features with the tuned HPs 
+        innerTrainProcessed := ConvertToData(innerTrain, featureSelected)
+        
+        forest := randomforest.Forest{
+            Data: randomforest.ForestData{
+                X: innerTrainProcessed,
+                Class: innerLabel,
+            },
+            MaxDepth: bestParams.MaxDepth,
+            LeafSize: bestParams.LeafSize,
+        }
+        forest.Train(bestParams.NTrees)
+
+        // Evaluate the model on outer test 
+        outerTestProcessed := ConvertToData(outerTest, outerTest.Features)
+        predictions := Predict(&forest, outerTestProcessed)
+        f1 := GetF1Score(predictions, outerLabel)
+
+        results[i] = FeaturesF1{
+            FeatureSelected: featureSelected,
+            F1: f1,
+        }
+    }
+    
+    fmt.Println(results)
 }
 
 func TestSyntheziedData() {
@@ -70,8 +131,11 @@ func TestSyntheziedData() {
     numIteration := 50
     numEstimators := 100
     // alpha := 0.05
+    maxDepth := 0
+    numLeaves := 0
 
-    selectedFeatures, finalResult, featureImportances := Boruta(dataset, labels, numIteration, numEstimators)
+
+    selectedFeatures, finalResult, featureImportances := Boruta(dataset, labels, numIteration, numEstimators, maxDepth, numLeaves)
 
 	fmt.Println("Selected Features:", selectedFeatures)
 	fmt.Println("Results:", finalResult)
@@ -90,7 +154,10 @@ func TestImage() {
 		fmt.Println("Error writing JSON:", err)
 	}
 
-	selectedFeatures, finalResult, featureImportances := Boruta(d, l, 50, 150)
+    maxDepth := 0
+    numLeaves := 0
+
+	selectedFeatures, finalResult, featureImportances := Boruta(d, l, 50, 150, maxDepth, numLeaves)
 	fmt.Println(selectedFeatures)
 	fmt.Println(finalResult)
 	fmt.Println(featureImportances)
@@ -104,4 +171,58 @@ func TestImage() {
 	cmd.Stderr = os.Stderr
 	cmd.Run()
 
+}
+
+func createToyDataset() (*Dataset, []int) {
+	numInstances := 1000
+	dataset := &Dataset{
+		Features: []string{"x1", "x2", "x3", "x4", "x5", "noise1", "noise2"},
+		Instance: []*Instance{},
+		Label:    "label",
+	}
+
+	var labels []int
+
+	for i := 0; i < numInstances; i++ {
+		x1 := rand.NormFloat64() // Important feature
+		x2 := rand.NormFloat64() // Important feature
+		x3 := rand.NormFloat64() // Important feature
+
+		// Redundant features (linear combinations)
+		x4 := x1 + x2 // Redundant feature
+		x5 := x2 - x3 // Redundant feature
+
+		// Noise features
+		noise1 := rand.NormFloat64() + 3
+		noise2 := rand.NormFloat64() - 1
+
+		// Target variable (binary classification)
+		// Let's assume that if (x1 + x2 + x3) > threshold, label is 1 else 0
+		threshold := 0.0
+		sum := x1 + x2 + x3
+		label := 0
+		if sum > threshold {
+			label = 1
+		}
+
+		// Create an instance
+		instance := &Instance{
+			Features: map[string]float64{
+				"x1":     x1,
+				"x2":     x2,
+				"x3":     x3,
+				"x4":     x4,
+				"x5":     x5,
+				"noise1": noise1,
+				"noise2": noise2,
+			},
+			Label: fmt.Sprintf("%d", label),
+		}
+
+		// Add instance and label to dataset
+		dataset.Instance = append(dataset.Instance, instance)
+		labels = append(labels, label)
+	}
+
+	return dataset, labels
 }
