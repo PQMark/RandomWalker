@@ -13,6 +13,12 @@ type FeaturesF1 struct{
     F1 float64
 }
 
+
+// RShiny
+// File Reader 
+// Try new FS method: mRMR
+// Replace the GridSearch with Bayesian Optimizor for faster speed
+
 func main() {
 	
 	// TestSyntheziedData()

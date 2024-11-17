@@ -18,12 +18,6 @@ type Instance struct {
 	Label string
 }
 
-type FeatureImportance struct {
-	Feature string
-	ImportanceMean float64
-	ImportanceStd float64 
-}
-
 // Fine on toy dataset 
 // d does not contain label 
 // numIteration: The maximum 
@@ -69,7 +63,7 @@ func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators, maxDepth, num
 			d.ShuffleShadowFeatures(featuresToConsider)
 
 			// Train the model and update the results 
-			trainRandomForest(d, dLabel, featuresToConsider, numEstimators, maxDepth, numLeaves, results)
+			trainRandomForestBoruta(d, dLabel, featuresToConsider, numEstimators, maxDepth, numLeaves, results)
 		}
 
 		fmt.Println(results)
@@ -171,7 +165,7 @@ func (d *Dataset) ShuffleShadowFeatures(features []string) {
 }
 
 // Fine
-func trainRandomForest(d *Dataset, Y []int, features []string, numEstimators, maxDepth, numLeaves int, results map[string]int) {
+func trainRandomForestBoruta(d *Dataset, Y []int, features []string, numEstimators, maxDepth, numLeaves int, results map[string]int) {
 	
 	// Prepare training data and labels for training process
 	// convert the data to [][]float64 type 

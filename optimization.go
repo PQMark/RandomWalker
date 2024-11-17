@@ -59,8 +59,9 @@ func GridSearchParallel(data *Dataset, labels []int, numFolds, numProcs int, hyp
 }	
 
 func hyperparameterGridBoruta(dataLength int) []HyperParameters {
-	nTrees := make([]int, 5)
-	maxDepth := []int{5, 10, 20, 25, 30, 35, 40}
+	// nTrees := make([]int, 5)
+	nTrees := []int{100, 200, 300, 500, 1000}
+	maxDepth := []int{5, 10, 20, 25, 30, 50, 100}
 	leafSize := make([]int, 5)
 
 	var defaultLeafSize int
@@ -80,9 +81,11 @@ func hyperparameterGridBoruta(dataLength int) []HyperParameters {
 		}
 	}
 
+	/*
 	for i := 0; i < 5; i++ {
 		nTrees[i] = 100 + i * 500
 	}
+	*/
 
 	// Get all the combinations
 	var grid []HyperParameters
@@ -117,7 +120,7 @@ func GridSearch(params HyperParameters, dataFolds []*Dataset, labelFolds [][]int
 
 		// Retain data with all features 
 		trainDataProcessed := ConvertToData(trainData, trainData.Features)
-		valDataProcessed := ConvertData(valData, valData.Features)
+		valDataProcessed := ConvertToData(valData, valData.Features)
 
 		forest := randomforest.Forest{
 			Data: randomforest.ForestData{
