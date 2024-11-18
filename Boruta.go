@@ -20,12 +20,11 @@ type Instance struct {
 
 // Fine on toy dataset 
 // d does not contain label 
-// numIteration: The maximum 
 func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) ([]string, map[string]int, map[string]float64) {
 	removedFeatures := make(map[string]bool)		// features marked as unimportant
 
 	var featuresToConsider []string					// features remians tentative
-	
+
 	featureImportances := make(map[string]float64)
 
 	// Initialize featuresToConsider to all the features 
@@ -90,7 +89,7 @@ func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators, maxDepth, num
 			fmt.Println("Converged.")
 			
 			// Train a RF with selected features 
-			x := ConvertToData(d, featuresToConsider)
+			x := ConvertData(d, featuresToConsider)
 
 			forestWithFeatures := randomforest.Forest{
 				Data: randomforest.ForestData{
@@ -106,6 +105,7 @@ func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators, maxDepth, num
 				featureImportances[featureName] = forestWithFeatures.FeatureImportance[i]
 			}
 			
+
 			return featuresToConsider, results, featureImportances
 		}
 
@@ -169,7 +169,7 @@ func trainRandomForestBoruta(d *Dataset, Y []int, features []string, numEstimato
 	
 	// Prepare training data and labels for training process
 	// convert the data to [][]float64 type 
-	x := ConvertToData(d, features)
+	x := ConvertToDataBoruta(d, features)
 	//trainY is dLabel
 
 	forest := randomforest.Forest{
@@ -235,7 +235,7 @@ func CheckFeatures(allFeatures []string, features []string) {
 }
 
 // fine 
-func ConvertToData(d *Dataset, featuresToConsider []string) [][]float64 {
+func ConvertToDataBoruta(d *Dataset, featuresToConsider []string) [][]float64 {
 	
 	data := make([][]float64, len(d.Instance))
 

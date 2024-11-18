@@ -119,8 +119,8 @@ func GridSearch(params HyperParameters, dataFolds []*Dataset, labelFolds [][]int
 		// selectedFeatures, _, _:= Boruta(trainData, trainLabel, 50, 500)
 
 		// Retain data with all features 
-		trainDataProcessed := ConvertToData(trainData, trainData.Features)
-		valDataProcessed := ConvertToData(valData, valData.Features)
+		trainDataProcessed := ConvertToDataBoruta(trainData, trainData.Features)
+		valDataProcessed := ConvertToDataBoruta(valData, valData.Features)
 
 		forest := randomforest.Forest{
 			Data: randomforest.ForestData{

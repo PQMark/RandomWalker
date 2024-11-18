@@ -21,12 +21,16 @@ type FeaturesF1 struct{
 
 func main() {
 	
+    // Boruta:
 	// TestSyntheziedData()
 
 	// TestImage()
 
-    TestSyntheziedDataWithOptimization()
-	
+    // TestSyntheziedDataWithOptimization()
+
+
+    // RFE:
+    TestSyntheziedDataRFE()
 }
 
 func TestSyntheziedDataWithOptimization() {
@@ -53,10 +57,10 @@ func TestSyntheziedDataWithOptimization() {
         fmt.Printf("Best F1 Score: %.2f\n", bestF1)
 
         // Use the tuned HPs for RF in Boruta
-        featureSelected, _, _ := Boruta(innerTrain, innerLabel, 50, bestParams.NTrees, bestParams.MaxDepth, bestParams.LeafSize)
+        featureSelected, _ , _:= Boruta(innerTrain, innerLabel, 50, bestParams.NTrees, bestParams.MaxDepth, bestParams.LeafSize)
 
         // Train a RF with selected features with the tuned HPs 
-        innerTrainProcessed := ConvertToData(innerTrain, featureSelected)
+        innerTrainProcessed := ConvertData(innerTrain, featureSelected)
         
         forest := randomforest.Forest{
             Data: randomforest.ForestData{
@@ -69,7 +73,7 @@ func TestSyntheziedDataWithOptimization() {
         forest.Train(bestParams.NTrees)
 
         // Evaluate the model on outer test 
-        outerTestProcessed := ConvertToData(outerTest, outerTest.Features)
+        outerTestProcessed := ConvertData(outerTest, outerTest.Features)
         predictions := Predict(&forest, outerTestProcessed)
         f1 := GetF1Score(predictions, outerLabel)
 
@@ -141,11 +145,10 @@ func TestSyntheziedData() {
     numLeaves := 0
 
 
-    selectedFeatures, finalResult, featureImportances := Boruta(dataset, labels, numIteration, numEstimators, maxDepth, numLeaves)
+    selectedFeatures, finalResult, _ := Boruta(dataset, labels, numIteration, numEstimators, maxDepth, numLeaves)
 
 	fmt.Println("Selected Features:", selectedFeatures)
 	fmt.Println("Results:", finalResult)
-    fmt.Println("Feature Importances:", featureImportances)
 }
 
 func TestImage() {
@@ -231,4 +234,69 @@ func createToyDataset() (*Dataset, []int) {
 	}
 
 	return dataset, labels
+}
+
+
+func TestSyntheziedDataRFE() {
+	numInstances := 1000
+	dataset := &Dataset{
+        Features: []string{"x1", "x2", "x3", "x4", "x5", "noise1", "noise2"},
+        Instance: []*Instance{},
+        Label:    "label",
+    }
+
+	var labels []int
+
+	for i := 0; i < numInstances; i++ {
+        x1 := rand.NormFloat64()       // Important feature
+        x2 := rand.NormFloat64()	   // Important feature
+        x3 := rand.NormFloat64() 	   // Important feature
+
+        // Redundant features (linear combinations)
+        x4 := x1 + x2                  // Redundant feature
+        x5 := x2 - x3                  // Redundant feature
+
+        // Noise features
+        noise1 := rand.NormFloat64() + 3
+        noise2 := rand.NormFloat64() - 1
+
+        // Target variable (binary classification)
+        // Let's assume that if (x1 + x2 + x3) > threshold, label is 1 else 0
+        threshold := 0.0
+        sum := x1 + x2 + x3
+        label := 0
+        if sum > threshold {
+            label = 1
+        }
+
+        // Create an instance
+        instance := &Instance{
+            Features: map[string]float64{
+                "x1":     x1,
+                "x2":     x2,
+                "x3":     x3,
+                "x4":     x4,
+                "x5":     x5,
+                "noise1": noise1,
+                "noise2": noise2,
+            },
+            Label: fmt.Sprintf("%d", label),
+        }
+
+        // Add instance and label to dataset
+        dataset.Instance = append(dataset.Instance, instance)
+        labels = append(labels, label)
+    }
+
+	// Now, call your Boruta function
+    numIteration := 50
+    numEstimators := 100
+    // alpha := 0.05
+    maxDepth := 0
+    numLeaves := 0
+
+    train, label, test, tLabel := SplitTrainTest(dataset, labels, 0.75)
+    featureStats := REF(train, test, label, tLabel, numIteration, numEstimators, maxDepth, numLeaves)
+
+	fmt.Println("Results:", featureStats)
 }
