@@ -3,101 +3,65 @@ package main
 import (
 	"fmt"
 	"math/rand"
+
 	randomforest "github.com/malaschitz/randomForest"
 )
 
-// Fine on toy dataset
-// d does not contain label
-func permutation(d *Dataset, dLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) ([]string, map[string]int, map[string]float64) {
-	removedFeatures := make(map[string]bool) // features marked as unimportant
+func permutation(d, test *Dataset, dLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) ([]string, map[string]int, map[string]float64) {
 
-	var featuresToConsider []string // features remians tentative
-
-	featureImportances := make(map[string]float64)
+	var featuresToConsider []string
 
 	// Initialize featuresToConsider to all the features
-	for _, name := range d.Features {
-		featuresToConsider = append(featuresToConsider, name)
-	}
+	featuresToConsider = append(featuresToConsider, d.Features...)
 
-	//check the size of training data and labels
+	featuresPermutationScore := make(map[string]float64)
+
 	if len(d.Instance) != len(dLabel) {
 		panic("Unequal size of training set and label set")
 	}
+
+	//Get the F1 score for the referenceRandomForest
+	F1Reference := trainRandomForestPermute(d, test, dLabel, t)
+
+	//map to store average F1 scores for each features
+	numFeatures := len(featuresToConsider)
+	permutationScores := make(map[string]float64, numFeatures)
 
 	run := 0
 	for {
 		run++
 
-		oldNum := len(featuresToConsider)
-
-		// Make a copy of the data with features to consider
-		d := DeepCopy(d, featuresToConsider)
-
-		// Initialize the dataset with shadow features
-		d.Initialize(featuresToConsider)
-
 		// Check the features match with shadows
 		CheckFeatures(d.Features, featuresToConsider)
 
-		results := make(map[string]int)
-
 		// Train the RF model numIteration times
-		for i := 0; i < numIteration; i++ {
 
-			for _, f := range featuresToConsider {
+		for _, f := range featuresToConsider {
+			fPermutationScore := make([]float64, 0, numIteration)
+
+			for i := 0; i < numIteration; i++ {
 				fmt.Println("Permute run:", run, "/", i, "/", f)
+				current_d := DeepCopy(d, featuresToConsider)
 				// Permute features
-				d.PermuteFeature(f)
-			}
+				current_d.PermuteFeature(f)
+				// Train the model and get the decrease of F1 score after shuffeling feature f
+				permutedF1Temp := trainRandomForestPermute(d, test, dLabel, featuresToConsider, numEstimators, maxDepth, numLeaves)
 
-			// Train the model and update the results
-			trainRandomForestBoruta(d, dLabel, featuresToConsider, numEstimators, maxDepth, numLeaves, results)
+				permutationScoreTemp := F1Reference - permutedF1Temp
+
+				fPermutationScore = append(fPermutationScore, permutationScoreTemp)
+
+			}
+			//get the average F1 score during numIteration times of permutation of feature f
+
+			permutationScores[f] = Average(fPermutationScore)
 		}
 
 		fmt.Println(results)
 		threshold := CalculateThreshold(numIteration)
 		fmt.Println("Bionomial Threshold:", threshold)
 
-		// Remove unimportant features
-		for f, val := range results {
-			if val < threshold {
-
-				// record the feature removed
-				removedFeatures[f] = true
-
-				fmt.Println("Delete Feature:", f)
-
-				// remove the feature from featuresToConsider
-				featuresToConsider = DeleteFromString(f, featuresToConsider)
-
-			}
-		}
-
-		// Converge if there is less than three features or no update any more
-		if len(featuresToConsider) < 3 || oldNum == len(featuresToConsider) {
-			fmt.Println("Converged.")
-
-			// Train a RF with selected features
-			x := ConvertData(d, featuresToConsider)
-
-			forestWithFeatures := randomforest.Forest{
-				Data: randomforest.ForestData{
-					X:     x,
-					Class: dLabel,
-				},
-			}
-
-			forestWithFeatures.Train(300)
-
-			for i := 0; i < len(featuresToConsider); i++ {
-				featureName := d.Features[i]
-				featureImportances[featureName] = forestWithFeatures.FeatureImportance[i]
-			}
-
-			return featuresToConsider, results, featureImportances
-		}
-
+		return permutationScores
 	}
 
 }
@@ -126,4 +90,51 @@ func (d *Dataset) PermuteFeature(f string) {
 		instance.Features[f_shadow] = values[i]
 	}
 
+}
+
+func trainRandomForestPermute(d *Dataset, Y []int, features []string, numEstimators, maxDepth, numLeaves int) float64 {
+	var F1Score float64
+	// Prepare training data and labels for training process
+	// convert the data to [][]float64 type
+	x := ConvertToDataBoruta(d, features)
+	//trainY is dLabel
+
+	forest := randomforest.Forest{
+		Data: randomforest.ForestData{
+			X:     x,
+			Class: Y,
+		},
+		MaxDepth: maxDepth,
+		LeafSize: numLeaves,
+	}
+
+	forest.Train(numEstimators)
+
+	// Find the threshold of shadow features
+	var shadow_IS float64
+	featuresNum := len(x[0]) / 2
+
+	for i := featuresNum; i < 2*featuresNum; i++ {
+		importanceScore := forest.FeatureImportance[i]
+
+		if importanceScore > shadow_IS {
+			shadow_IS = importanceScore
+		}
+	}
+
+	// Update the results
+	// numFeatures := len(x[0])
+
+	for i := 0; i < featuresNum; i++ {
+		featureName := d.Features[i]
+
+		if forest.FeatureImportance[i] > shadow_IS {
+			results[featureName]++
+		} else if _, exists := results[featureName]; !exists {
+			results[featureName] = 0
+		}
+
+	}
+
+	return F1Score
 }
