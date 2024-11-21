@@ -7,14 +7,12 @@ import (
 	randomforest "github.com/malaschitz/randomForest"
 )
 
-func permutation(d, test *Dataset, dLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) ([]string, map[string]int, map[string]float64) {
+func permutation(d, test *Dataset, dLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) map[string]float64 {
 
 	var featuresToConsider []string
 
 	// Initialize featuresToConsider to all the features
 	featuresToConsider = append(featuresToConsider, d.Features...)
-
-	featuresPermutationScore := make(map[string]float64)
 
 	if len(d.Instance) != len(dLabel) {
 		panic("Unequal size of training set and label set")
@@ -57,9 +55,7 @@ func permutation(d, test *Dataset, dLabel []int, numIteration, numEstimators, ma
 			permutationScores[f] = Average(fPermutationScore)
 		}
 
-		fmt.Println(results)
-		threshold := CalculateThreshold(numIteration)
-		fmt.Println("Bionomial Threshold:", threshold)
+		drawPermutationBarplot(permutationScores)
 
 		return permutationScores
 	}
@@ -92,11 +88,12 @@ func (d *Dataset) PermuteFeature(f string) {
 
 }
 
-func trainRandomForestPermute(d *Dataset, Y []int, features []string, numEstimators, maxDepth, numLeaves int) float64 {
+func trainRandomForestPermute(d, test *Dataset, dLabel, tLabel []int, features []string, numEstimators, maxDepth, numLeaves int) float64 {
 	var F1Score float64
 	// Prepare training data and labels for training process
 	// convert the data to [][]float64 type
-	x := ConvertToDataBoruta(d, features)
+	x := ConvertData(d, features)
+	xTest := ConvertData(test, features)
 	//trainY is dLabel
 
 	forest := randomforest.Forest{
@@ -137,4 +134,8 @@ func trainRandomForestPermute(d *Dataset, Y []int, features []string, numEstimat
 	}
 
 	return F1Score
+}
+
+func drawPermutationBarplot(featureScore map[string]float64) {
+
 }
