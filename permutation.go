@@ -7,7 +7,13 @@ import (
 	randomforest "github.com/malaschitz/randomForest"
 )
 
-func permutation(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) map[string]float64 {
+// Nice Work !!!!! 
+// 1. Run RF several times to get a more stable F1 score baseline
+// 2. Incorporate standard error (use the standardError and Average functions)
+// 3. Optimize for parallel execution
+// 4. Write a script for visualization
+
+func Permutation(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) map[string]float64 {
 
 	var featuresToConsider []string
 
@@ -29,14 +35,15 @@ func permutation(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstima
 
 	for _, f := range featuresToConsider {
 		fPermutationScore := make([]float64, 0, numIteration)
+		current_d := DeepCopy(d, featuresToConsider)
 
 		for i := 0; i < numIteration; i++ {
-			fmt.Println("Permute run:", i, "/", f)
-			current_d := DeepCopy(d, featuresToConsider)
+			fmt.Println("Permutation run:", i, "/", f)
+
 			// Permute features
 			current_d.PermuteFeature(f)
 			// Train the model and get the decrease of F1 score after shuffeling feature f
-			permutedF1Temp := trainRandomForestPermute(d, test, dLabel, tLabel, featuresToConsider, numEstimators, maxDepth, numLeaves)
+			permutedF1Temp := trainRandomForestPermute(current_d, test, dLabel, tLabel, featuresToConsider, numEstimators, maxDepth, numLeaves)
 
 			permutationScoreTemp := F1Reference - permutedF1Temp
 

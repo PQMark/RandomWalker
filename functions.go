@@ -3,6 +3,7 @@ package main
 import (
 	//"fmt"
 	"math/rand"
+	"math"
 
 	"github.com/malaschitz/randomForest"
 )
@@ -236,4 +237,21 @@ func Average(lst []float64) float64 {
 	}
 
 	return a / float64(len(lst))
+}
+
+func standardError(data []float64, mean float64) float64 {
+	n := len(data)
+	if n == 0 {
+		return 0.0
+	}
+
+	// Calculate SD 
+	sumSquaredDiffs := 0.0
+	for _, val := range data {
+		diff := val - mean
+		sumSquaredDiffs += diff * diff
+	}
+	std := math.Sqrt(sumSquaredDiffs / float64(n))
+
+	return std / math.Sqrt(float64(n))
 }

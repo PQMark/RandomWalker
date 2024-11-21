@@ -1,9 +1,8 @@
-package main
+package main 
 
 import (
 	"fmt"
 
-	"math"
 	"github.com/malaschitz/randomForest"
 )
 
@@ -40,7 +39,7 @@ func REF(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, ma
 		}
 
 		// Calculate the mean 
-		avgF1 := Mean(tempResults)
+		avgF1 := Average(tempResults)
 
 		// Get the error 
 		errorF1 := standardError(tempResults, avgF1)
@@ -108,32 +107,6 @@ func trainRandomForestREF(d, test *Dataset, dLabel, tLabel []int, features []str
 		*featureImportance = append(*featureImportance, importance[i])
 	}
 
-}
-
-func Mean(data []float64) float64{
-	sum := 0.0 
-	for _, val := range data {
-		sum += val 
-	}
-
-	return sum / float64(len(data))
-}
-
-func standardError(data []float64, mean float64) float64 {
-	n := len(data)
-	if n == 0 {
-		return 0.0
-	}
-
-	// Calculate SD 
-	sumSquaredDiffs := 0.0
-	for _, val := range data {
-		diff := val - mean
-		sumSquaredDiffs += diff * diff
-	}
-	std := math.Sqrt(sumSquaredDiffs / float64(n))
-
-	return std / math.Sqrt(float64(n))
 }
 
 // Sum to 1

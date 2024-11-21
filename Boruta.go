@@ -29,14 +29,15 @@ func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators, maxDepth, num
 	featureImportances := make(map[string]float64)
 
 	// Initialize featuresToConsider to all the features
-	for _, name := range d.Features {
-		featuresToConsider = append(featuresToConsider, name)
-	}
+	featuresToConsider = append(featuresToConsider, d.Features...)
 
 	//check the size of training data and labels
 	if len(d.Instance) != len(dLabel) {
 		panic("Unequal size of training set and label set")
 	}
+
+	threshold := CalculateThreshold(numIteration)
+	fmt.Println("Bionomial Threshold:", threshold)
 
 	run := 0
 	for {
@@ -67,8 +68,6 @@ func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators, maxDepth, num
 		}
 
 		fmt.Println(results)
-		threshold := CalculateThreshold(numIteration)
-		fmt.Println("Bionomial Threshold:", threshold)
 
 		// Remove unimportant features
 		for f, val := range results {

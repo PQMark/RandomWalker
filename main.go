@@ -352,14 +352,14 @@ func TestSyntheziedDataPermute() {
 	}
 
 	// Now, call your Boruta function
-	numIteration := 50
-	numEstimators := 100
+	numIteration := 100
+	numEstimators := 300
 	// alpha := 0.05
 	maxDepth := 0
 	numLeaves := 0
 
 	train, label, test, tLabel := SplitTrainTest(dataset, labels, 0.75)
-	featuresScore := permutation(train, test, label, tLabel, numIteration, numEstimators, maxDepth, numLeaves)
+	featuresScore := Permutation(train, test, label, tLabel, numIteration, numEstimators, maxDepth, numLeaves)
 
 	fmt.Println("Results:", featuresScore)
 }
