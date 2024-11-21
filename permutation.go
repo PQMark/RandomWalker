@@ -7,7 +7,7 @@ import (
 	randomforest "github.com/malaschitz/randomForest"
 )
 
-func permutation(d, test *Dataset, dLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) map[string]float64 {
+func permutation(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) map[string]float64 {
 
 	var featuresToConsider []string
 
@@ -19,59 +19,51 @@ func permutation(d, test *Dataset, dLabel []int, numIteration, numEstimators, ma
 	}
 
 	//Get the F1 score for the referenceRandomForest
-	F1Reference := trainRandomForestPermute(d, test, dLabel, t)
+	F1Reference := trainRandomForestPermute(d, test, dLabel, tLabel, featuresToConsider, numEstimators, maxDepth, numLeaves)
 
 	//map to store average F1 scores for each features
 	numFeatures := len(featuresToConsider)
 	permutationScores := make(map[string]float64, numFeatures)
 
-	run := 0
-	for {
-		run++
+	// Train the RF model numIteration times
 
-		// Check the features match with shadows
-		CheckFeatures(d.Features, featuresToConsider)
+	for _, f := range featuresToConsider {
+		fPermutationScore := make([]float64, 0, numIteration)
 
-		// Train the RF model numIteration times
+		for i := 0; i < numIteration; i++ {
+			fmt.Println("Permute run:", i, "/", f)
+			current_d := DeepCopy(d, featuresToConsider)
+			// Permute features
+			current_d.PermuteFeature(f)
+			// Train the model and get the decrease of F1 score after shuffeling feature f
+			permutedF1Temp := trainRandomForestPermute(d, test, dLabel, tLabel, featuresToConsider, numEstimators, maxDepth, numLeaves)
 
-		for _, f := range featuresToConsider {
-			fPermutationScore := make([]float64, 0, numIteration)
+			permutationScoreTemp := F1Reference - permutedF1Temp
 
-			for i := 0; i < numIteration; i++ {
-				fmt.Println("Permute run:", run, "/", i, "/", f)
-				current_d := DeepCopy(d, featuresToConsider)
-				// Permute features
-				current_d.PermuteFeature(f)
-				// Train the model and get the decrease of F1 score after shuffeling feature f
-				permutedF1Temp := trainRandomForestPermute(d, test, dLabel, featuresToConsider, numEstimators, maxDepth, numLeaves)
+			fPermutationScore = append(fPermutationScore, permutationScoreTemp)
 
-				permutationScoreTemp := F1Reference - permutedF1Temp
-
-				fPermutationScore = append(fPermutationScore, permutationScoreTemp)
-
-			}
-			//get the average F1 score during numIteration times of permutation of feature f
-
-			permutationScores[f] = Average(fPermutationScore)
 		}
+		//get the average F1 score during numIteration times of permutation of feature f
 
-		drawPermutationBarplot(permutationScores)
-
-		return permutationScores
+		permutationScores[f] = Average(fPermutationScore)
 	}
+
+	return permutationScores
 
 }
 
+// function on object d
+// take as input string f, which is the name of the feature that will be permuted
+// The function shufffle the value of given feature amoung all samples
+// no out put
 func (d *Dataset) PermuteFeature(f string) {
-
-	f_shadow := "permute_" + f
 
 	// values stores the values of a feature
 	var values []float64
 
 	// Extract the values for the feature
 	for _, instance := range d.Instance {
-		if val, ok := instance.Features[f_shadow]; ok {
+		if val, ok := instance.Features[f]; ok {
 			values = append(values, val)
 		}
 	}
@@ -83,11 +75,13 @@ func (d *Dataset) PermuteFeature(f string) {
 
 	// Add the shuffled shadow
 	for i, instance := range d.Instance {
-		instance.Features[f_shadow] = values[i]
+		instance.Features[f] = values[i]
 	}
 
 }
 
+// Take as input two datasets d and test, and the corresponding labels dLabel and tLabel as slice of integers, a slice of string features represent all features, and three integers as parameaters for random forest
+// Output: A float64 number, The F1 score after running randomforest
 func trainRandomForestPermute(d, test *Dataset, dLabel, tLabel []int, features []string, numEstimators, maxDepth, numLeaves int) float64 {
 	var F1Score float64
 	// Prepare training data and labels for training process
@@ -99,7 +93,7 @@ func trainRandomForestPermute(d, test *Dataset, dLabel, tLabel []int, features [
 	forest := randomforest.Forest{
 		Data: randomforest.ForestData{
 			X:     x,
-			Class: Y,
+			Class: dLabel,
 		},
 		MaxDepth: maxDepth,
 		LeafSize: numLeaves,
@@ -107,35 +101,9 @@ func trainRandomForestPermute(d, test *Dataset, dLabel, tLabel []int, features [
 
 	forest.Train(numEstimators)
 
-	// Find the threshold of shadow features
-	var shadow_IS float64
-	featuresNum := len(x[0]) / 2
-
-	for i := featuresNum; i < 2*featuresNum; i++ {
-		importanceScore := forest.FeatureImportance[i]
-
-		if importanceScore > shadow_IS {
-			shadow_IS = importanceScore
-		}
-	}
-
-	// Update the results
-	// numFeatures := len(x[0])
-
-	for i := 0; i < featuresNum; i++ {
-		featureName := d.Features[i]
-
-		if forest.FeatureImportance[i] > shadow_IS {
-			results[featureName]++
-		} else if _, exists := results[featureName]; !exists {
-			results[featureName] = 0
-		}
-
-	}
+	//Estimate model persision get F1 score
+	predictions := Predict(&forest, xTest)
+	F1Score = GetF1Score(predictions, tLabel)
 
 	return F1Score
-}
-
-func drawPermutationBarplot(featureScore map[string]float64) {
-
 }
