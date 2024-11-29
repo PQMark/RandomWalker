@@ -7,7 +7,13 @@ import (
 	randomforest "github.com/malaschitz/randomForest"
 )
 
-func permutation(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) map[string]float64 {
+type FeatureAvgMean struct {
+	Feature          string
+	AvgPermutScore   float64
+	ErrorPermutScore float64
+}
+
+func permutation(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) []FeatureAvgMean {
 
 	var featuresToConsider []string
 
@@ -23,11 +29,11 @@ func permutation(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstima
 
 	//map to store average F1 scores for each features
 	numFeatures := len(featuresToConsider)
-	permutationScores := make(map[string]float64, numFeatures)
+	results := make([]FeatureAvgMean, numFeatures)
 
 	// Train the RF model numIteration times
 
-	for _, f := range featuresToConsider {
+	for fnum, f := range featuresToConsider {
 		fPermutationScore := make([]float64, 0, numIteration)
 
 		for i := 0; i < numIteration; i++ {
@@ -45,10 +51,20 @@ func permutation(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstima
 		}
 		//get the average F1 score during numIteration times of permutation of feature f
 
-		permutationScores[f] = Average(fPermutationScore)
+		// Calculate the mean
+		avgPermut := Mean(fPermutationScore)
+
+		// Get the error
+		errorPermut := standardError(fPermutationScore, avgPermut)
+
+		results[fnum] = FeatureAvgMean{
+			Feature:          f,
+			AvgPermutScore:   avgPermut,
+			ErrorPermutScore: errorPermut,
+		}
 	}
 
-	return permutationScores
+	return results
 
 }
 

@@ -205,6 +205,7 @@ func TestSyntheziedData() {
 	fmt.Println("Results:", finalResult)
 }
 
+// Image
 func TestImage() {
 	num := 80
 	features := []int{
@@ -225,10 +226,12 @@ func TestImage() {
 	fmt.Println(finalResult)
 	fmt.Println(featureImportances)
 
+	//transcrib to JSON
 	if err := Write2Json(featureImportances, "MNIST_Output.json"); err != nil {
 		fmt.Println("Error writing JSON:", err)
 	}
 
+	//get JSON to python
 	cmd := exec.Command("python3", "scripts/visualization.py")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
