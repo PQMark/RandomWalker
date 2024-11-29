@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strconv"
 
 	"github.com/po3rin/gomnist"
@@ -141,4 +143,62 @@ func Write2Json(data interface{}, filename string) error {
 	defer file.Close()
 
 	return json.NewEncoder(file).Encode(data)
+}
+
+// colFeatures: True if cols are features while rows are instance
+// filepath is the path for csv
+func readCSV(filePath string, colFeatures bool, irrelevantCols, irrelevantRows string, featureIndex, groupIndex int) (*Dataset, []int) {
+	colFeaturesStr := strconv.FormatBool(colFeatures)
+	featureIndexStr := strconv.Itoa(featureIndex)
+	groupIndexStr := strconv.Itoa(groupIndex)
+
+	cmd := exec.Command(
+		"python3", "scripts/process_data.py", 
+		filePath, 
+		colFeaturesStr, 
+		irrelevantCols,
+		irrelevantRows, 
+		featureIndexStr, 
+		groupIndexStr,
+	)
+
+	err := cmd.Run()
+	if err != nil {
+		fmt.Printf("Error running Python script: %v\n", err)
+		return nil, nil
+	}
+
+	baseName := filepath.Base(filePath)
+	jsonDataName := fmt.Sprintf("%s.json", baseName[:len(baseName)-len(filepath.Ext(baseName))])
+	jsonDataPath := filepath.Join("temp/", jsonDataName)
+
+	jsonLabelName := fmt.Sprintf("%s_labels.json", baseName[:len(baseName)-len(filepath.Ext(baseName))])
+	jsonLabelPath := filepath.Join("temp/", jsonLabelName)
+
+	// read the json file 
+	jsonData, err := os.ReadFile(jsonDataPath)
+	if err != nil {
+		fmt.Printf("error unmarshalling JSON data: %v", err)
+		return nil, nil
+	}
+
+	jsonLabel, err := os.ReadFile(jsonLabelPath)
+	if err != nil {
+		fmt.Printf("error unmarshalling JSON data: %v", err)
+		return nil, nil
+	}
+
+	var dataset Dataset
+	if err := json.Unmarshal(jsonData, &dataset); err != nil {
+		fmt.Printf("error unmarshalling JSON data: %v", err)
+		return nil, nil 
+	}
+
+	var labels []int
+	if err := json.Unmarshal(jsonLabel, &labels); err != nil {
+		fmt.Printf("error unmarshalling JSON data: %v", err)
+		return nil, nil 
+	}
+
+	return &dataset, labels
 }
