@@ -52,7 +52,7 @@ func permutation(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstima
 		//get the average F1 score during numIteration times of permutation of feature f
 
 		// Calculate the mean
-		avgPermut := Mean(fPermutationScore)
+		avgPermut := Average(fPermutationScore)
 
 		// Get the error
 		errorPermut := standardError(fPermutationScore, avgPermut)

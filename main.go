@@ -21,7 +21,7 @@ type FeaturesF1 struct {
 
 func main() {
 
-	TestSyntheziedDataPermute()
+	//TestSyntheziedDataPermute()
 	// Boruta:
 	// TestSyntheziedData()
 
@@ -30,7 +30,7 @@ func main() {
 	// TestSyntheziedDataWithOptimization()
 
 	// RFE:
-	//TestSyntheziedDataRFE()
+	TestSyntheziedDataRFE()
 
 }
 
@@ -239,10 +239,84 @@ func TestImage() {
 
 }
 
+// func TestSyntheziedDataRFE() {
+// 	numInstances := 1000
+// 	dataset := &Dataset{
+// 		Features: []string{"x1", "x2", "x3", "x4", "x5", "noise1", "noise2"},
+// 		Instance: []*Instance{},
+// 		Label:    "label",
+// 	}
+
+// 	var labels []int
+
+// 	for i := 0; i < numInstances; i++ {
+// 		x1 := rand.NormFloat64() // Important feature
+// 		x2 := rand.NormFloat64() // Important feature
+// 		x3 := rand.NormFloat64() // Important feature
+
+// 		// Redundant features (linear combinations)
+// 		x4 := x1 + x2 // Redundant feature
+// 		x5 := x2 - x3 // Redundant feature
+
+// 		// Noise features
+// 		noise1 := rand.NormFloat64() + 3
+// 		noise2 := rand.NormFloat64() - 1
+
+// 		// Target variable (binary classification)
+// 		// Let's assume that if (x1 + x2 + x3) > threshold, label is 1 else 0
+// 		threshold := 0.0
+// 		sum := x1 + x2 + x3
+// 		label := 0
+// 		if sum > threshold {
+// 			label = 1
+// 		}
+
+// 		// Create an instance
+// 		instance := &Instance{
+// 			Features: map[string]float64{
+// 				"x1":     x1,
+// 				"x2":     x2,
+// 				"x3":     x3,
+// 				"x4":     x4,
+// 				"x5":     x5,
+// 				"noise1": noise1,
+// 				"noise2": noise2,
+// 			},
+// 			Label: fmt.Sprintf("%d", label),
+// 		}
+
+// 		// Add instance and label to dataset
+// 		dataset.Instance = append(dataset.Instance, instance)
+// 		labels = append(labels, label)
+// 	}
+
+// 	// Now, call your Boruta function
+// 	numIteration := 50
+// 	numEstimators := 100
+// 	// alpha := 0.05
+// 	maxDepth := 0
+// 	numLeaves := 0
+
+// 	train, label, test, tLabel := SplitTrainTest(dataset, labels, 0.75)
+// 	featureStats := REF(train, test, label, tLabel, numIteration, numEstimators, maxDepth, numLeaves)
+
+// 	fmt.Println("Results:", featureStats)
+
+// 	err := Write2Json(featureStats, "results.json")
+// 	if err != nil {
+// 		fmt.Println("Error writing to JSON file:", err)
+// 	} else {
+// 		fmt.Println("Results successfully written to results.json")
+// 	}
+// }
+
 func TestSyntheziedDataRFE() {
 	numInstances := 1000
 	dataset := &Dataset{
-		Features: []string{"x1", "x2", "x3", "x4", "x5", "noise1", "noise2"},
+		Features: []string{
+			"x1", "x2", "x3", "x4", "x5", "noise1", "noise2", "redundant1", "redundant2",
+			"redundant3", "redundant4", "redundant5", "redundant6", "noise3", "noise4",
+			"noise5", "noise6", "noise7", "noise8", "noise9"},
 		Instance: []*Instance{},
 		Label:    "label",
 	}
@@ -250,20 +324,34 @@ func TestSyntheziedDataRFE() {
 	var labels []int
 
 	for i := 0; i < numInstances; i++ {
-		x1 := rand.NormFloat64() // Important feature
-		x2 := rand.NormFloat64() // Important feature
-		x3 := rand.NormFloat64() // Important feature
+		// Important features
+		x1 := rand.NormFloat64()
+		x2 := rand.NormFloat64()
+		x3 := rand.NormFloat64()
 
 		// Redundant features (linear combinations)
-		x4 := x1 + x2 // Redundant feature
-		x5 := x2 - x3 // Redundant feature
+		x4 := x1 + x2
+		x5 := x2 - x3
+		redundant1 := x1 * x2
+		redundant2 := x3 * x2
+		redundant3 := x1 * x3
+		redundant4 := x1 + x3
+		redundant5 := x1 - x2
+
+		redundant6 := x2 + x3
 
 		// Noise features
 		noise1 := rand.NormFloat64() + 3
 		noise2 := rand.NormFloat64() - 1
+		noise3 := rand.NormFloat64()
+		noise4 := rand.NormFloat64()
+		noise5 := rand.NormFloat64()
+		noise6 := rand.NormFloat64()
+		noise7 := rand.NormFloat64()
+		noise8 := rand.NormFloat64()
+		noise9 := rand.NormFloat64()
 
 		// Target variable (binary classification)
-		// Let's assume that if (x1 + x2 + x3) > threshold, label is 1 else 0
 		threshold := 0.0
 		sum := x1 + x2 + x3
 		label := 0
@@ -274,13 +362,26 @@ func TestSyntheziedDataRFE() {
 		// Create an instance
 		instance := &Instance{
 			Features: map[string]float64{
-				"x1":     x1,
-				"x2":     x2,
-				"x3":     x3,
-				"x4":     x4,
-				"x5":     x5,
-				"noise1": noise1,
-				"noise2": noise2,
+				"x1":         x1,
+				"x2":         x2,
+				"x3":         x3,
+				"x4":         x4,
+				"x5":         x5,
+				"noise1":     noise1,
+				"noise2":     noise2,
+				"redundant1": redundant1,
+				"redundant2": redundant2,
+				"redundant3": redundant3,
+				"redundant4": redundant4,
+				"redundant5": redundant5,
+				"redundant6": redundant6,
+				"noise3":     noise3,
+				"noise4":     noise4,
+				"noise5":     noise5,
+				"noise6":     noise6,
+				"noise7":     noise7,
+				"noise8":     noise8,
+				"noise9":     noise9,
 			},
 			Label: fmt.Sprintf("%d", label),
 		}
@@ -290,17 +391,26 @@ func TestSyntheziedDataRFE() {
 		labels = append(labels, label)
 	}
 
-	// Now, call your Boruta function
+	// Now, call your RFE function
 	numIteration := 50
 	numEstimators := 100
-	// alpha := 0.05
 	maxDepth := 0
 	numLeaves := 0
+	//minFeatures := 2  // Minimum feature count to stop at
 
-	train, label, test, tLabel := SplitTrainTest(dataset, labels, 0.75)
-	featureStats := REF(train, test, label, tLabel, numIteration, numEstimators, maxDepth, numLeaves)
+	train, trainLabels, test, testLabels := SplitTrainTest(dataset, labels, 0.75)
+	featureStats := REF(train, test, trainLabels, testLabels, numIteration, numEstimators, maxDepth, numLeaves)
 
+	// Print Results
 	fmt.Println("Results:", featureStats)
+
+	// Write results to JSON file
+	err := Write2Json(featureStats, "results.json")
+	if err != nil {
+		fmt.Println("Error writing to JSON file:", err)
+	} else {
+		fmt.Println("Results successfully written to results.json")
+	}
 }
 
 func TestSyntheziedDataPermute() {
@@ -355,14 +465,14 @@ func TestSyntheziedDataPermute() {
 	}
 
 	// Now, call your Boruta function
-	numIteration := 50
-	numEstimators := 100
+	numIteration := 100
+	numEstimators := 300
 	// alpha := 0.05
 	maxDepth := 0
 	numLeaves := 0
 
 	train, label, test, tLabel := SplitTrainTest(dataset, labels, 0.75)
-	featuresScore := permutation(train, test, label, tLabel, numIteration, numEstimators, maxDepth, numLeaves)
+	results := permutation(train, test, label, tLabel, numIteration, numEstimators, maxDepth, numLeaves)
 
-	fmt.Println("Results:", featuresScore)
+	fmt.Println("Results:", results)
 }
