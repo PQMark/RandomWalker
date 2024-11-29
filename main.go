@@ -30,8 +30,15 @@ func main() {
 	// TestSyntheziedDataWithOptimization()
 
 	// RFE:
-	TestSyntheziedDataRFE()
+	//TestSyntheziedDataRFE()
 
+	filePath := "/Users/pengqiu/Desktop/GO/src/RandomWalker/testdata/Metabolite_name_parkinson.csv"
+	colFeatures := false
+	irrelevantCols := "2"
+	irrelevantRows := ""
+	featureIndex := 1
+	groupIndex := 1
+	readCSV(filePath, colFeatures, irrelevantCols, irrelevantRows, featureIndex, groupIndex)
 }
 
 func createToyDataset() (*Dataset, []int) {
