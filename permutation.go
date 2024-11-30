@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"runtime"
 
 	randomforest "github.com/malaschitz/randomForest"
 )
@@ -29,43 +30,65 @@ func permutation(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstima
 
 	//map to store average F1 scores for each features
 	numFeatures := len(featuresToConsider)
+	results := make([]FeatureAvgMean, 0, numFeatures)
+
+	numCPU := runtime.NumCPU()
+	featuresEachCPU := numFeatures / numCPU
+	c := make(chan []FeatureAvgMean, numCPU)
+
+	for i := 0; i < numCPU; i++ {
+		if i != numCPU-1 {
+			startfeature := i * featuresEachCPU
+			go permutationFeaturesParallel(d, test, dLabel, tLabel, featuresToConsider, startfeature, featuresEachCPU, numIteration, numEstimators, maxDepth, numLeaves, F1Reference, c)
+		} else {
+			numFeaturesLastCPU := numFeatures - featuresEachCPU*(numCPU-1)
+			startfeature := i * featuresEachCPU
+			go permutationFeaturesParallel(d, test, dLabel, tLabel, featuresToConsider, startfeature, numFeaturesLastCPU, numIteration, numEstimators, maxDepth, numLeaves, F1Reference, c)
+		}
+	}
+
+	for i := 0; i < numCPU; i++ {
+		resultTemp := <-c
+		results = append(results, resultTemp...)
+	}
+
+	return results
+
+}
+
+// permutationParallel
+// Take as input
+func permutationFeaturesParallel(d, test *Dataset, dLabel, tLabel []int, featuresToConsider []string, startfeature, numFeatures, numIteration, numEstimators, maxDepth, numLeaves int, F1Reference float64, c chan []FeatureAvgMean) {
 	results := make([]FeatureAvgMean, numFeatures)
-
-	// Train the RF model numIteration times
-
-	for fnum, f := range featuresToConsider {
-		fPermutationScore := make([]float64, 0, numIteration)
+	for j := startfeature; j < startfeature+numFeatures; j++ {
+		F1Score := make([]float64, 0, numIteration)
 
 		for i := 0; i < numIteration; i++ {
-			fmt.Println("Permute run:", i, "/", f)
+			fmt.Println("Permute run:", i, "/", featuresToConsider[j])
 			current_d := DeepCopy(d, featuresToConsider)
 			// Permute features
-			current_d.PermuteFeature(f)
+			current_d.PermuteFeature(featuresToConsider[j])
 			// Train the model and get the decrease of F1 score after shuffeling feature f
 			permutedF1Temp := trainRandomForestPermute(d, test, dLabel, tLabel, featuresToConsider, numEstimators, maxDepth, numLeaves)
 
-			permutationScoreTemp := F1Reference - permutedF1Temp
-
-			fPermutationScore = append(fPermutationScore, permutationScoreTemp)
+			F1Score = append(F1Score, permutedF1Temp)
 
 		}
 		//get the average F1 score during numIteration times of permutation of feature f
 
 		// Calculate the mean
-		avgPermut := Average(fPermutationScore)
-
+		avgF1 := Average(F1Score)
+		avgPermut := avgF1 - F1Reference
 		// Get the error
-		errorPermut := standardError(fPermutationScore, avgPermut)
+		errorPermut := standardError(F1Score, avgF1)
 
-		results[fnum] = FeatureAvgMean{
-			Feature:          f,
+		results[j-startfeature] = FeatureAvgMean{
+			Feature:          featuresToConsider[j],
 			AvgPermutScore:   avgPermut,
 			ErrorPermutScore: errorPermut,
 		}
 	}
-
-	return results
-
+	c <- results
 }
 
 // function on object d
