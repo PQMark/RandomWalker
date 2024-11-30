@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"os/exec"
-	"strconv"
 
 	randomforest "github.com/malaschitz/randomForest"
 )
@@ -32,10 +30,27 @@ func main() {
 	// TestSyntheziedDataWithOptimization()
 
 	// RFE:
-	//TestSyntheziedDataRFE()
-	TestSyntheziedDataRFEFromCSV("data_liver_weight.csv")
+	TestSyntheziedDataRFE()
 
-}
+	filePath := "/Users/pengqiu/Desktop/GO/src/RandomWalker/testdata/Metabolite_name_parkinson.csv"
+	colFeatures := false
+	irrelevantCols := "2"
+	irrelevantRows := ""
+	featureIndex := 1
+	groupIndex := 1
+	dataset, labels := readCSV(filePath, colFeatures, irrelevantCols, irrelevantRows, featureIndex, groupIndex)
+
+	// dataset, labels := createToyDataset()
+
+	numIteration := 50
+	numFolds := 2
+
+	results := RunBoruta(dataset, labels, numIteration, numFolds, Optimization{Default: HyperParameters{LeafSize: 2, MaxDepth: 15, NTrees: 2000}})
+
+	fmt.Println(results)
+
+}	
+
 
 func createToyDataset() (*Dataset, []int) {
 	numInstances := 1000
@@ -115,7 +130,7 @@ func TestSyntheziedDataWithOptimization() {
 		fmt.Printf("Best F1 Score: %.2f\n", bestF1)
 
 		// Use the tuned HPs for RF in Boruta
-		featureSelected, _, _ := Boruta(innerTrain, innerLabel, 50, bestParams.NTrees, bestParams.MaxDepth, bestParams.LeafSize)
+		featureSelected, _ := Boruta(innerTrain, innerLabel, 50, bestParams.NTrees, bestParams.MaxDepth, bestParams.LeafSize)
 
 		// Train a RF with selected features with the tuned HPs
 		innerTrainProcessed := ConvertData(innerTrain, featureSelected)
@@ -202,12 +217,13 @@ func TestSyntheziedData() {
 	maxDepth := 0
 	numLeaves := 0
 
-	selectedFeatures, finalResult, _ := Boruta(dataset, labels, numIteration, numEstimators, maxDepth, numLeaves)
+	selectedFeatures, finalResult := Boruta(dataset, labels, numIteration, numEstimators, maxDepth, numLeaves)
 
 	fmt.Println("Selected Features:", selectedFeatures)
 	fmt.Println("Results:", finalResult)
 }
 
+// Image
 func TestImage() {
 	num := 80
 	features := []int{
@@ -223,21 +239,26 @@ func TestImage() {
 	maxDepth := 0
 	numLeaves := 0
 
+
 	selectedFeatures, finalResult, featureImportances := Boruta(d, l, 50, 150, maxDepth, numLeaves)
 	fmt.Println(selectedFeatures)
 	fmt.Println(finalResult)
 	fmt.Println(featureImportances)
 
+	//transcrib to JSON
 	if err := Write2Json(featureImportances, "MNIST_Output.json"); err != nil {
 		fmt.Println("Error writing JSON:", err)
 	}
 
+	//get JSON to python
 	cmd := exec.Command("python3", "scripts/visualization.py")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Run()
+	
 
 }
+*/
 
 // func TestSyntheziedDataRFE() {
 // 	numInstances := 1000
@@ -547,7 +568,7 @@ func TestSyntheziedDataPermute() {
 	numLeaves := 0
 
 	train, label, test, tLabel := SplitTrainTest(dataset, labels, 0.75)
-	featuresScore := Permutation(train, test, label, tLabel, numIteration, numEstimators, maxDepth, numLeaves)
+	results := permutation(train, test, label, tLabel, numIteration, numEstimators, maxDepth, numLeaves)
 
-	fmt.Println("Results:", featuresScore)
+	fmt.Println("Results:", results)
 }
