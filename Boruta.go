@@ -19,14 +19,106 @@ type Instance struct {
 	Label    string
 }
 
+type Optimization struct {
+	Optimize bool 
+	Default HyperParameters
+	DefaultGrid bool
+	HyperParamsGrid []HyperParameters
+	numProcs int
+}
+
+func RunBoruta(data *Dataset, labels []int, numIteration, numFolds int, optimization Optimization) []FeaturesF1 {
+
+	results := make([]FeaturesF1, numFolds)
+	dataFolds, labelFolds := FoldSplit(data, labels, numFolds)
+	var hyperGrid []HyperParameters
+	var hyperParams HyperParameters
+
+	for i := 0; i < numFolds; i++ {
+
+		// Get Inner train & Outer test
+		innerTrain, innerLabel, outerTest, outerLabel := GetFoldData(dataFolds, labelFolds, i)
+
+		// Perform Optimization 
+		if optimization.Optimize {
+
+			// 10 fold CV for inner train (HP Optimization)
+			// Define grid search space
+			if optimization.DefaultGrid {
+				// Use default grid
+				hyperGrid = hyperparameterGridBoruta(int(float64(len(innerLabel)) * 0.9))
+			} else {
+				// User specified
+				hyperGrid = optimization.HyperParamsGrid
+			}
+
+			if optimization.numProcs == 0 {
+				optimization.numProcs = 8
+			}
+
+			bestParams, bestF1 := GridSearchParallel(innerTrain, innerLabel, 10, optimization.numProcs, hyperGrid)
+			fmt.Printf("Best Hyperparameters - NTrees: %d, MaxDepth: %d, LeafSize: %d\n", bestParams.NTrees, bestParams.MaxDepth, bestParams.LeafSize)
+			fmt.Printf("Best F1 Score: %.2f\n", bestF1)
+
+			hyperParams = bestParams
+
+		} else {
+			// Use default value for Boruta
+			hyperParams = optimization.Default
+
+			if hyperParams.NTrees == 0 {
+				hyperParams.NTrees = 1000
+			}
+
+			if hyperParams.MaxDepth == 0 {
+				hyperParams.MaxDepth = 10
+			}
+
+			if hyperParams.LeafSize == 0 {
+				hyperParams.LeafSize = 20
+			}
+		}
+	
+		// Boruta
+		fmt.Println(hyperParams)
+		featureSelected, _ := Boruta(innerTrain, innerLabel, numIteration, hyperParams.NTrees, hyperParams.MaxDepth, hyperParams.LeafSize)
+
+		fmt.Println(featureSelected)
+
+		// Train a RF with selected features with the tuned HPs
+		innerTrainProcessed := ConvertData(innerTrain, featureSelected)
+
+		forest := randomforest.Forest{
+			Data: randomforest.ForestData{
+				X:     innerTrainProcessed,
+				Class: innerLabel,
+			},
+			MaxDepth: hyperParams.MaxDepth,
+			LeafSize: hyperParams.LeafSize,
+		}
+		forest.Train(hyperParams.NTrees)
+
+		// Evaluate the model on outer test
+		outerTestProcessed := ConvertData(outerTest, outerTest.Features)
+		predictions := Predict(&forest, outerTestProcessed)
+		f1 := GetF1Score(predictions, outerLabel)
+
+		results[i] = FeaturesF1{
+			FeatureSelected: featureSelected,
+			F1:              f1,
+		}
+	}
+
+	return results
+}
+
+
 // Fine on toy dataset
 // d does not contain label
-func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) ([]string, map[string]int, map[string]float64) {
+func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) ([]string, map[string]int) {
 	removedFeatures := make(map[string]bool) // features marked as unimportant
 
 	var featuresToConsider []string // features remians tentative
-
-	featureImportances := make(map[string]float64)
 
 	// Initialize featuresToConsider to all the features
 	featuresToConsider = append(featuresToConsider, d.Features...)
@@ -88,24 +180,7 @@ func Boruta(d *Dataset, dLabel []int, numIteration, numEstimators, maxDepth, num
 		if len(featuresToConsider) < 3 || oldNum == len(featuresToConsider) {
 			fmt.Println("Converged.")
 
-			// Train a RF with selected features
-			x := ConvertData(d, featuresToConsider)
-
-			forestWithFeatures := randomforest.Forest{
-				Data: randomforest.ForestData{
-					X:     x,
-					Class: dLabel,
-				},
-			}
-
-			forestWithFeatures.Train(300)
-
-			for i := 0; i < len(featuresToConsider); i++ {
-				featureName := d.Features[i]
-				featureImportances[featureName] = forestWithFeatures.FeatureImportance[i]
-			}
-
-			return featuresToConsider, results, featureImportances
+			return featuresToConsider, results
 		}
 
 	}

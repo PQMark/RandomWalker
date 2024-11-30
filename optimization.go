@@ -44,10 +44,10 @@ func GridSearchParallel(data *Dataset, labels []int, numFolds, numProcs int, hyp
 	for i := 0; i < len(hyperGrid); i++ {
 		res := <- resultsChan
 
-		fmt.Println("P", res.Params)
-		fmt.Println("F", res.F1Avg)
+		//fmt.Println("P", res.Params)
+		//fmt.Println("F", res.F1Avg)
 
-		fmt.Println(res)
+		//fmt.Println(res)
 
 		if res.F1Avg > bestF1 {
 			bestF1 = res.F1Avg

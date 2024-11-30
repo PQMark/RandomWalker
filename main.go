@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"os"
-	"os/exec"
+	//"os"
+	//"os/exec"
 
 	randomforest "github.com/malaschitz/randomForest"
 )
@@ -38,8 +38,19 @@ func main() {
 	irrelevantRows := ""
 	featureIndex := 1
 	groupIndex := 1
-	readCSV(filePath, colFeatures, irrelevantCols, irrelevantRows, featureIndex, groupIndex)
-}
+	dataset, labels := readCSV(filePath, colFeatures, irrelevantCols, irrelevantRows, featureIndex, groupIndex)
+
+	// dataset, labels := createToyDataset()
+
+	numIteration := 50
+	numFolds := 2
+
+	results := RunBoruta(dataset, labels, numIteration, numFolds, Optimization{Default: HyperParameters{LeafSize: 2, MaxDepth: 15, NTrees: 2000}})
+
+	fmt.Println(results)
+
+}	
+
 
 func createToyDataset() (*Dataset, []int) {
 	numInstances := 1000
@@ -119,7 +130,7 @@ func TestSyntheziedDataWithOptimization() {
 		fmt.Printf("Best F1 Score: %.2f\n", bestF1)
 
 		// Use the tuned HPs for RF in Boruta
-		featureSelected, _, _ := Boruta(innerTrain, innerLabel, 50, bestParams.NTrees, bestParams.MaxDepth, bestParams.LeafSize)
+		featureSelected, _ := Boruta(innerTrain, innerLabel, 50, bestParams.NTrees, bestParams.MaxDepth, bestParams.LeafSize)
 
 		// Train a RF with selected features with the tuned HPs
 		innerTrainProcessed := ConvertData(innerTrain, featureSelected)
@@ -206,12 +217,13 @@ func TestSyntheziedData() {
 	maxDepth := 0
 	numLeaves := 0
 
-	selectedFeatures, finalResult, _ := Boruta(dataset, labels, numIteration, numEstimators, maxDepth, numLeaves)
+	selectedFeatures, finalResult := Boruta(dataset, labels, numIteration, numEstimators, maxDepth, numLeaves)
 
 	fmt.Println("Selected Features:", selectedFeatures)
 	fmt.Println("Results:", finalResult)
 }
 
+/*
 func TestImage() {
 	num := 80
 	features := []int{
@@ -227,6 +239,7 @@ func TestImage() {
 	maxDepth := 0
 	numLeaves := 0
 
+
 	selectedFeatures, finalResult, featureImportances := Boruta(d, l, 50, 150, maxDepth, numLeaves)
 	fmt.Println(selectedFeatures)
 	fmt.Println(finalResult)
@@ -240,8 +253,10 @@ func TestImage() {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Run()
+	
 
 }
+*/
 
 // func TestSyntheziedDataRFE() {
 // 	numInstances := 1000
@@ -476,7 +491,7 @@ func TestSyntheziedDataPermute() {
 	numLeaves := 0
 
 	train, label, test, tLabel := SplitTrainTest(dataset, labels, 0.75)
-	featuresScore := Permutation(train, test, label, tLabel, numIteration, numEstimators, maxDepth, numLeaves)
+	featuresScore := permutation(train, test, label, tLabel, numIteration, numEstimators, maxDepth, numLeaves)
 
 	fmt.Println("Results:", featuresScore)
 }
