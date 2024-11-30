@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 
 	randomforest "github.com/malaschitz/randomForest"
 )
@@ -30,7 +32,8 @@ func main() {
 	// TestSyntheziedDataWithOptimization()
 
 	// RFE:
-	TestSyntheziedDataRFE()
+	//TestSyntheziedDataRFE()
+	TestSyntheziedDataRFEFromCSV("data_liver_weight.csv")
 
 }
 
@@ -307,86 +310,161 @@ func TestImage() {
 // 	}
 // }
 
-func TestSyntheziedDataRFE() {
-	numInstances := 1000
+func TestSyntheziedDataRFEFromCSV(filePath string) {
+	// Open the CSV file
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Println("Error opening CSV file:", err)
+		return
+	}
+	defer file.Close()
+
+	// Read the CSV file
+	reader := csv.NewReader(file)
+	rows, err := reader.ReadAll()
+	if err != nil {
+		fmt.Println("Error reading CSV file:", err)
+		return
+	}
+
+	features := rows[0][1:]
+
+	// Initialize Dataset and labels
 	dataset := &Dataset{
-		Features: []string{
-			"x1", "x2", "x3", "x4", "x5", "noise1", "noise2", "redundant1", "redundant2",
-			"redundant3", "redundant4", "redundant5", "redundant6", "noise3", "noise4",
-			"noise5", "noise6", "noise7", "noise8", "noise9"},
+		Features: features,
 		Instance: []*Instance{},
 		Label:    "label",
 	}
-
 	var labels []int
 
-	for i := 0; i < numInstances; i++ {
-		// Important features
-		x1 := rand.NormFloat64()
-		x2 := rand.NormFloat64()
-		x3 := rand.NormFloat64()
+	// Parse rows into dataset
+	for _, row := range rows[1:] { // Skip header row
+		// Parse the label (column 1)
+		// label, err := strconv.Atoi(row[0])
+		// if err != nil {
+		// 	fmt.Println("Error parsing label:", err)
+		// 	continue
+		// }
 
-		// Redundant features (linear combinations)
-		x4 := x1 + x2
-		x5 := x2 - x3
-		redundant1 := x1 * x2
-		redundant2 := x3 * x2
-		redundant3 := x1 * x3
-		redundant4 := x1 + x3
-		redundant5 := x1 - x2
+		// Parse features (columns 2 onward)
+		featureMap := make(map[string]float64)
+		for i, feature := range features {
+			value, err := strconv.ParseFloat(row[i], 64)
+			if err != nil {
+				fmt.Println("Error parsing feature value:", err)
+				continue
+			}
+			featureMap[feature] = value
+		}
 
-		redundant6 := x2 + x3
-
-		// Noise features
-		noise1 := rand.NormFloat64() + 3
-		noise2 := rand.NormFloat64() - 1
-		noise3 := rand.NormFloat64()
-		noise4 := rand.NormFloat64()
-		noise5 := rand.NormFloat64()
-		noise6 := rand.NormFloat64()
-		noise7 := rand.NormFloat64()
-		noise8 := rand.NormFloat64()
-		noise9 := rand.NormFloat64()
-
-		// Target variable (binary classification)
-		threshold := 0.0
-		sum := x1 + x2 + x3
-		label := 0
-		if sum > threshold {
+		// binary classification of liver weights
+		var mean float64
+		mean = calculateMeanLiverWeight(filePath)
+		fmt.Println(mean)
+		var label int
+		val, _ := strconv.ParseFloat(row[0], 64)
+		fmt.Println(val)
+		if val >= mean {
 			label = 1
+		} else {
+			label = 0
 		}
 
 		// Create an instance
 		instance := &Instance{
-			Features: map[string]float64{
-				"x1":         x1,
-				"x2":         x2,
-				"x3":         x3,
-				"x4":         x4,
-				"x5":         x5,
-				"noise1":     noise1,
-				"noise2":     noise2,
-				"redundant1": redundant1,
-				"redundant2": redundant2,
-				"redundant3": redundant3,
-				"redundant4": redundant4,
-				"redundant5": redundant5,
-				"redundant6": redundant6,
-				"noise3":     noise3,
-				"noise4":     noise4,
-				"noise5":     noise5,
-				"noise6":     noise6,
-				"noise7":     noise7,
-				"noise8":     noise8,
-				"noise9":     noise9,
-			},
-			Label: fmt.Sprintf("%d", label),
+			Features: featureMap,
+			Label:    fmt.Sprintf("%d", label),
 		}
 
-		// Add instance and label to dataset
+		// Add to dataset and labels
 		dataset.Instance = append(dataset.Instance, instance)
 		labels = append(labels, label)
 	}
+
+	TestSyntheziedDataRFE(dataset, labels)
+
+}
+
+func TestSyntheziedDataRFE(dataset *Dataset, labels []int) {
+	// 	numInstances := 1000
+	// 	dataset := &Dataset{
+	// 		Features: []string{
+	// 			"x1", "x2", "x3", "x4", "x5", "noise1", "noise2", "redundant1", "redundant2",
+	// 			"redundant3", "redundant4", "redundant5", "redundant6", "noise3", "noise4",
+	// 			"noise5", "noise6", "noise7", "noise8", "noise9"},
+	// 		Instance: []*Instance{},
+	// 		Label:    "label",
+	// 	}
+
+	// 	var labels []int
+
+	// 	for i := 0; i < numInstances; i++ {
+	// 		// Important features
+	// 		x1 := rand.NormFloat64()
+	// 		x2 := rand.NormFloat64()
+	// 		x3 := rand.NormFloat64()
+
+	// 		// Redundant features (linear combinations)
+	// 		x4 := x1 + x2
+	// 		x5 := x2 - x3
+	// 		redundant1 := x1 * x2
+	// 		redundant2 := x3 * x2
+	// 		redundant3 := x1 * x3
+	// 		redundant4 := x1 + x3
+	// 		redundant5 := x1 - x2
+
+	// 		redundant6 := x2 + x3
+
+	// 		// Noise features
+	// 		noise1 := rand.NormFloat64() + 3
+	// 		noise2 := rand.NormFloat64() - 1
+	// 		noise3 := rand.NormFloat64()
+	// 		noise4 := rand.NormFloat64()
+	// 		noise5 := rand.NormFloat64()
+	// 		noise6 := rand.NormFloat64()
+	// 		noise7 := rand.NormFloat64()
+	// 		noise8 := rand.NormFloat64()
+	// 		noise9 := rand.NormFloat64()
+
+	// 		// Target variable (binary classification)
+	// 		threshold := 0.0
+	// 		sum := x1 + x2 + x3
+	// 		label := 0
+	// 		if sum > threshold {
+	// 			label = 1
+	// 		}
+
+	// 		// Create an instance
+	// 		instance := &Instance{
+	// 			Features: map[string]float64{
+	// 				"x1":         x1,
+	// 				"x2":         x2,
+	// 				"x3":         x3,
+	// 				"x4":         x4,
+	// 				"x5":         x5,
+	// 				"noise1":     noise1,
+	// 				"noise2":     noise2,
+	// 				"redundant1": redundant1,
+	// 				"redundant2": redundant2,
+	// 				"redundant3": redundant3,
+	// 				"redundant4": redundant4,
+	// 				"redundant5": redundant5,
+	// 				"redundant6": redundant6,
+	// 				"noise3":     noise3,
+	// 				"noise4":     noise4,
+	// 				"noise5":     noise5,
+	// 				"noise6":     noise6,
+	// 				"noise7":     noise7,
+	// 				"noise8":     noise8,
+	// 				"noise9":     noise9,
+	// 			},
+	// 			Label: fmt.Sprintf("%d", label),
+	// 		}
+
+	// 		// Add instance and label to dataset
+	// 		dataset.Instance = append(dataset.Instance, instance)
+	// 		labels = append(labels, label)
+	// 	}
 
 	// Now, call your RFE function
 	numIteration := 50
@@ -396,7 +474,7 @@ func TestSyntheziedDataRFE() {
 	//minFeatures := 2  // Minimum feature count to stop at
 
 	train, trainLabels, test, testLabels := SplitTrainTest(dataset, labels, 0.75)
-	featureStats := REF(train, test, trainLabels, testLabels, numIteration, numEstimators, maxDepth, numLeaves)
+	featureStats := RFE(train, test, trainLabels, testLabels, numIteration, numEstimators, maxDepth, numLeaves)
 
 	// Print Results
 	fmt.Println("Results:", featureStats)

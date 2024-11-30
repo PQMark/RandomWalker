@@ -1,66 +1,66 @@
-package main 
+package main
 
 import (
 	"fmt"
 
-	"github.com/malaschitz/randomForest"
+	randomforest "github.com/malaschitz/randomForest"
 )
 
-type FeatureStats struct{
+type FeatureStats struct {
 	Features []string
-	AvgF1 float64
-	ErrorF1 float64
+	AvgF1    float64
+	ErrorF1  float64
 }
 
-func REF(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) []FeatureStats {
-	
+func RFE(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) []FeatureStats {
+
 	results := make([]FeatureStats, 0)
 
-	var featuresToConsider []string		
-	// Initialize featuresToConsider to all the features 
+	var featuresToConsider []string
+	// Initialize featuresToConsider to all the features
 	featuresToConsider = append(featuresToConsider, d.Features...)
 
 	//check the size of training data and labels
 	if len(d.Instance) != len(dLabel) {
 		panic("Unequal size of training set and label set")
-	} 
+	}
 
-	run := 0 
+	run := 0
 	for {
-		run ++ 
+		run++
 
 		tempResults := make([]float64, 0, numIteration)
 		featureImportances := make([][]float64, numIteration)
 
 		// Train the RF model numIteration times
-		for i:=0; i<numIteration; i++ {
+		for i := 0; i < numIteration; i++ {
 			fmt.Println("REF run:", run, "/", i)
-			trainRandomForestREF(d, test, dLabel, tLabel, featuresToConsider, numEstimators, maxDepth, numLeaves, &tempResults, &featureImportances[i])
+			trainRandomForestRFE(d, test, dLabel, tLabel, featuresToConsider, numEstimators, maxDepth, numLeaves, &tempResults, &featureImportances[i])
 		}
 
-		// Calculate the mean 
+		// Calculate the mean
 		avgF1 := Average(tempResults)
 
-		// Get the error 
+		// Get the error
 		errorF1 := standardError(tempResults, avgF1)
 
 		featuresToConsiderCopy := make([]string, len(featuresToConsider))
 		copy(featuresToConsiderCopy, featuresToConsider)
 		stat := FeatureStats{
 			Features: featuresToConsiderCopy,
-			AvgF1: avgF1,
-			ErrorF1: errorF1,
+			AvgF1:    avgF1,
+			ErrorF1:  errorF1,
 		}
 
 		// Append to result
 		results = append(results, stat)
 
-		// Check the number of features remaining 
+		// Check the number of features remaining
 		if len(featuresToConsider) == 1 {
 			return results
 		}
 
-		// Discard the features with last 3% FI scores 
+		// Discard the features with last 3% FI scores
 		DiscardFeatures(featureImportances, &featuresToConsider, 3)
 
 		fmt.Println(featuresToConsider)
@@ -68,9 +68,9 @@ func REF(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, ma
 	}
 }
 
-// Run one RF 
+// Run one RF
 // Store the F1 score and feature importances
-func trainRandomForestREF(d, test *Dataset, dLabel, tLabel []int, features []string, numEstimators, maxDepth, numLeaves int, results *[]float64, featureImportance *[]float64) {
+func trainRandomForestRFE(d, test *Dataset, dLabel, tLabel []int, features []string, numEstimators, maxDepth, numLeaves int, results *[]float64, featureImportance *[]float64) {
 
 	x := ConvertData(d, features)
 	xTest := ConvertData(test, features)
@@ -78,7 +78,7 @@ func trainRandomForestREF(d, test *Dataset, dLabel, tLabel []int, features []str
 	// Train the RF
 	forest := randomforest.Forest{
 		Data: randomforest.ForestData{
-			X: x,
+			X:     x,
 			Class: dLabel,
 		},
 		MaxDepth: maxDepth,
@@ -86,22 +86,22 @@ func trainRandomForestREF(d, test *Dataset, dLabel, tLabel []int, features []str
 	}
 	forest.Train(numEstimators)
 
-	// Evaluate the trained model on test data 
+	// Evaluate the trained model on test data
 	predictions := Predict(&forest, xTest)
 	F1 := GetF1Score(predictions, tLabel)
 
 	*results = append(*results, F1)
 
-	// Get feature importance 
+	// Get feature importance
 	importance := make([]float64, 0, len(features))
 	for i := 0; i < len(features); i++ {
 		importance = append(importance, forest.FeatureImportance[i])
 	}
 
-	// Normalize feature importance 
+	// Normalize feature importance
 	Normalization(importance)
 
-	// Weigted by F1 score 
+	// Weigted by F1 score
 	for i := range importance {
 		importance[i] *= F1
 		*featureImportance = append(*featureImportance, importance[i])
@@ -110,18 +110,17 @@ func trainRandomForestREF(d, test *Dataset, dLabel, tLabel []int, features []str
 }
 
 // Sum to 1
-func Normalization(data []float64){
-	sum := 0.0 
+func Normalization(data []float64) {
+	sum := 0.0
 
 	for _, val := range data {
 		sum += val
 	}
 
 	for i := range data {
-		data[i] /= sum 
+		data[i] /= sum
 	}
 }
-
 
 // Fine (marginal cases not tested)
 func DiscardFeatures(data [][]float64, features *[]string, a int) {
@@ -145,13 +144,13 @@ func DiscardFeatures(data [][]float64, features *[]string, a int) {
 		importanceMean[c] = sum / n
 	}
 
-	for i := length - 1; i >= 0; i-- { 
+	for i := length - 1; i >= 0; i-- {
 		val1 := importanceMean[i]
 		count := 0
 
 		for _, val2 := range importanceMean {
 			if val1 > val2 {
-				count ++
+				count++
 			}
 
 			if count >= size {
@@ -163,7 +162,7 @@ func DiscardFeatures(data [][]float64, features *[]string, a int) {
 			*features = DeleteFromString((*features)[i], *features)
 		}
 
-		if len(*features) <= length - size {
+		if len(*features) <= length-size {
 			break
 		}
 
@@ -188,64 +187,3 @@ func ConvertData(d *Dataset, features []string) [][]float64 {
 
 	return data
 }
-
-/*
-func RankFeatureImportances(data [][]float64, features []string) []string {
- 
-}
-*/
-
-// RFE performs Recursive Feature Elimination using a Random Forest model. (golearn)
-// func RFE(trainData, testData *base.DenseInstances, numEstimators int, threshold float64) ([]string, error) {
-// 	// Get initial set of features
-// 	// get a slice of all attributes
-// 	remainingFeatures := trainData.AllAttributes()
-// 	featureNames := make([]string, len(remainingFeatures))
-
-// 	// range over the slice of attributes and append to feature names
-// 	for i, attribute := range remainingFeatures {
-// 		featureNames[i] = attribute.GetName()
-// 	}
-
-// 	featureCount := int(math.Sqrt(float64(len(remainingFeatures))))
-
-// 	for len(remainingFeatures) > 1 {
-// 		// Train a new Random Forest model with numEstimator number of trees and featureCount
-// 		// number of features to build each tree
-// 		rf := ensemble.NewRandomForest(numEstimators, featureCount)
-// 		if err := rf.Fit(trainData); err != nil {
-// 			return nil, fmt.Errorf("failed to fit model: %s", err)
-// 		}
-
-// 		// Get feature importance
-// 		importances := rf.FeatureImportance() //not a method
-// 		if len(importances) != len(remainingFeatures) {
-// 			return nil, fmt.Errorf("feature importance size mismatch")
-// 		}
-
-// 		// Find feature with minimum importance
-// 		minImportance := importances[0]
-// 		minIndex := 0
-// 		for i, importance := range importances {
-// 			if importance < minImportance {
-// 				minImportance = importance
-// 				minIndex = i
-// 			}
-// 		}
-
-// 		// Check threshold condition
-// 		if minImportance >= threshold {
-// 			break
-// 		}
-
-// 		// Remove feature from remainingFeatures and featureNames
-// 		remainingFeatures = append(remainingFeatures[:minIndex], remainingFeatures[minIndex+1:]...)
-// 		featureNames = append(featureNames[:minIndex], featureNames[minIndex+1:]...)
-
-// 		// Update training and testing datasets by dropping the column
-// 		// trainData, _ = base.DropColumn(trainData, trainData.AllAttributes()[minIndex])
-// 		// testData, _ = base.DropColumn(testData, testData.AllAttributes()[minIndex])
-// 	}
-
-// 	return featureNames, nil
-// }

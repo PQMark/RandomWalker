@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
+	"encoding/csv"
 
 	"github.com/po3rin/gomnist"
 )
@@ -141,4 +142,54 @@ func Write2Json(data interface{}, filename string) error {
 	defer file.Close()
 
 	return json.NewEncoder(file).Encode(data)
+}
+
+func calculateMeanLiverWeight(filePath string) float64 {
+	// Open the CSV file
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Println("Error opening CSV file:", err)
+		return 0
+	}
+	defer file.Close()
+
+	// Create a new CSV reader
+	reader := csv.NewReader(file)
+
+	// Read all rows from the CSV file
+	rows, err := reader.ReadAll()
+	if err != nil {
+		fmt.Println("Error reading CSV file:", err)
+		return 0
+	}
+
+	// Initialize variables for calculating the mean
+	var sum float64
+	var count int
+
+	// Iterate over the rows (starting from row 1 to skip header)
+	for _, row := range rows[1:] { // Assuming the first row is a header
+		// Extract the liver weight (first column) and convert to float64
+		liverWeightStr := row[0] // The liver weight is in the first column
+		liverWeight, err := strconv.ParseFloat(liverWeightStr, 64)
+		if err != nil {
+			fmt.Println("Error parsing liver weight:", err)
+			continue
+		}
+
+		// Add the liver weight to the sum
+		sum += liverWeight
+		count++
+	}
+
+	var mean float64
+	// Calculate the mean
+	if count > 0 {
+		mean = sum / float64(count)
+		fmt.Printf("Mean Liver Weight: %.2f\n", mean)
+	} else {
+		fmt.Println("No data to calculate the mean.")
+	}
+
+	return mean
 }
