@@ -223,7 +223,7 @@ func TestSyntheziedData() {
 	fmt.Println("Results:", finalResult)
 }
 
-/*
+// Image
 func TestImage() {
 	num := 80
 	features := []int{
@@ -245,10 +245,12 @@ func TestImage() {
 	fmt.Println(finalResult)
 	fmt.Println(featureImportances)
 
+	//transcrib to JSON
 	if err := Write2Json(featureImportances, "MNIST_Output.json"); err != nil {
 		fmt.Println("Error writing JSON:", err)
 	}
 
+	//get JSON to python
 	cmd := exec.Command("python3", "scripts/visualization.py")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -491,7 +493,7 @@ func TestSyntheziedDataPermute() {
 	numLeaves := 0
 
 	train, label, test, tLabel := SplitTrainTest(dataset, labels, 0.75)
-	featuresScore := permutation(train, test, label, tLabel, numIteration, numEstimators, maxDepth, numLeaves)
+	results := permutation(train, test, label, tLabel, numIteration, numEstimators, maxDepth, numLeaves)
 
-	fmt.Println("Results:", featuresScore)
+	fmt.Println("Results:", results)
 }
