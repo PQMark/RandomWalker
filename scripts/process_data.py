@@ -18,37 +18,43 @@ def read_csv(filepath, col_features, irrelevant_cols, irrelevant_rows, feature_i
 
     filename = os.path.splitext(os.path.basename(filepath))[0]
 
-    df = pd.read_csv(filepath, header=None)
+    df = pd.read_csv(filepath, header=None, low_memory=False)
 
     df.drop(index=[i-1 for i in irrelevant_rows], inplace=True)
     df.drop(columns=[i-1 for i in irrelevant_cols], inplace=True)
 
     # adjust feature index and group index 
+    '''
     if col_features:
         feature_index -= len([i for i in irrelevant_rows if i < feature_index])
         group_index -= len([i for i in irrelevant_cols if i < group_index])
     else:
         feature_index -= len([i for i in irrelevant_cols if i < feature_index])
         group_index -= len([i for i in irrelevant_rows if i < group_index])
-
+    '''
+        
     # transpose
     if not col_features:
         df = df.transpose()
 
-    features = df.iloc[feature_index-1, :].to_list()
-    features = [str(f) for f in features][1:]
-
-    labels = df.iloc[:, group_index-1].to_list()
+    labels = df.loc[:, group_index-1].to_list()
     labels = [str(l) for l in labels][1:]
-
-    df.drop(df.index[feature_index-1], inplace=True)
     df.drop(columns=group_index-1, inplace=True)
+
+
+    features = df.loc[feature_index-1, :].to_list()
+    features = [str(f) for f in features][1:]
+    df.drop(df.index[feature_index-1], inplace=True)
 
     # reset index 
     df.reset_index(drop=True, inplace=True)
     df.columns = range(df.shape[1])
     
     instances = []
+
+    #print(features)
+    #print("--------", labels)
+    #print(df)
 
     for idx, row in df.iterrows():
         f_values = row.to_list()
