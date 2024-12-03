@@ -12,13 +12,21 @@ type FeatureStats struct {
 	ErrorF1  float64
 }
 
-func RFE(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) []FeatureStats {
+// numFeatures sets the minimun number of features to stop rfe, 0 means run until single feature
+// returns list of FeatureStats and importance scores
+func RFE(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, maxDepth, numLeaves int, numFeatures int) ([]FeatureStats, map[string]float64) {
 
 	results := make([]FeatureStats, 0)
+	thresholdFeatures := false
+
+	if numFeatures != 0 {
+		thresholdFeatures = true
+	}
+
 
 	var featuresToConsider []string
 	// Initialize featuresToConsider to all the features
-	featuresToConsider = append(featuresToConsider, d.Features...)
+	featuresToConsider = append(featuresToConsider, d.Features...) 
 
 	//check the size of training data and labels
 	if len(d.Instance) != len(dLabel) {
@@ -36,6 +44,16 @@ func RFE(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, ma
 		for i := 0; i < numIteration; i++ {
 			fmt.Println("REF run:", run, "/", i)
 			trainRandomForestRFE(d, test, dLabel, tLabel, featuresToConsider, numEstimators, maxDepth, numLeaves, &tempResults, &featureImportances[i])
+		}
+		
+		importanceScores := make(map[string]float64)
+		avgFeatureImportance := make([]float64, len(featuresToConsider))
+		for i := range featuresToConsider {
+			for j := 0; j < numIteration; j++ {
+				avgFeatureImportance[i] += featureImportances[j][i]
+			}
+			avgFeatureImportance[i] /= float64(numIteration)
+			importanceScores[featuresToConsider[i]] = avgFeatureImportance[i]
 		}
 
 		// Calculate the mean
@@ -55,10 +73,22 @@ func RFE(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, ma
 		// Append to result
 		results = append(results, stat)
 
-		// Check the number of features remaining
-		if len(featuresToConsider) == 1 {
-			return results
+		// if min number of features indicated, return when len(features) == numFeatures
+		// else repeat until single feature 
+		if thresholdFeatures {
+			if len(featuresToConsider) <= numFeatures {
+				singleResult := make([]FeatureStats, 0)
+				singleResult = append(singleResult, results[run-1])
+				return singleResult, importanceScores
+
+			}
+
+		} else {
+			if len(featuresToConsider) == 1 {
+				return results, importanceScores
+			}
 		}
+
 
 		// Discard the features with last 3% FI scores
 		DiscardFeatures(featureImportances, &featuresToConsider, 3)
