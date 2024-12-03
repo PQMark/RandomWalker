@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"encoding/csv"
+	"bytes"
 
 	"github.com/po3rin/gomnist"
 )
@@ -213,9 +214,15 @@ func readCSV(filePath string, colFeatures bool, irrelevantCols, irrelevantRows s
 		groupIndexStr,
 	)
 
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+
+	// print error msg 
 	err := cmd.Run()
 	if err != nil {
 		fmt.Printf("Error running Python script: %v\n", err)
+		fmt.Printf("Script output:\n%s\n", output.String()) 
 		return nil, nil
 	}
 
@@ -251,5 +258,31 @@ func readCSV(filePath string, colFeatures bool, irrelevantCols, irrelevantRows s
 		return nil, nil 
 	}
 
+	return &dataset, labels
+}
+
+func ReadJSON(jsonDataPath, jsonLabelPath string) (*Dataset, []int) {
+
+
+    jsonData, err := os.ReadFile(jsonDataPath)
+    if err != nil {
+        fmt.Printf("error unmarshalling JSON data: %v", err)
+    }
+
+    jsonLabel, err := os.ReadFile(jsonLabelPath)
+    if err != nil {
+        fmt.Printf("error unmarshalling JSON data: %v", err)
+    }
+
+    var dataset Dataset
+    if err := json.Unmarshal(jsonData, &dataset); err != nil {
+        fmt.Printf("error unmarshalling JSON data: %v", err)
+    }
+
+    var labels []int
+    if err := json.Unmarshal(jsonLabel, &labels); err != nil {
+        fmt.Printf("error unmarshalling JSON data: %v", err)
+    }
+	
 	return &dataset, labels
 }
