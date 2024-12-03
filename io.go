@@ -137,7 +137,8 @@ func CreateDataset(mnist *gomnist.MNIST, selectedIndices []int, cols int) (*Data
 
 
 func Write2Json(data interface{}, filename string) error {
-	file, err := os.Create(filename)
+
+	file, err := os.Create(filepath.Join("temp", filename))
 	if err != nil {
 		return err
 	}
