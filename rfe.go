@@ -12,6 +12,55 @@ type FeatureStats struct {
 	ErrorF1  float64
 }
 
+// outputs optimal number of features 
+func RFECV(data *Dataset, labels []int, numIteration, numEstimators, maxDepth, numLeaves, numFolds, numFeatures int) int {
+	dataFolds, labelFolds := FoldSplit(data, labels, numFolds)
+	results := make([][]float64, numFolds)
+
+	for i := 0; i < numFolds; i++ {
+		innerTrain, innerLabel, outerTest, outerLabel := GetFoldData(dataFolds, labelFolds, i)
+
+		featureStats, _ := RFE(innerTrain, outerTest, innerLabel, outerLabel, numIteration, numEstimators, maxDepth, numLeaves, 0)
+
+		// range over all the feature stats in list feature stat
+		// set each col of result[i] as f1 score
+		for j := range results[i] {
+			if j < len(featureStats) {
+				results[i][j] = featureStats[j].AvgF1
+			}
+		}
+
+	}
+
+	// map to store feature count to avg score
+	avgScores := make(map[int]float64, 0)
+
+	// range over all the folds for each feature count
+	for j := range results[0] {
+		total := 0.0
+
+		for i := range numFolds {
+			total += results[i][j]			
+		}
+
+		avgScores[j+1] = total/float64(numFolds)
+	}
+
+	// range over the map to identiy feature count with the highest f1 score
+	maxAvgF1 := 0.0
+	optimalFeatureCount := 0
+	for featureCount, AvgF1 := range avgScores {
+		if AvgF1 > maxAvgF1 {
+			maxAvgF1 = AvgF1
+			optimalFeatureCount = featureCount
+		}
+	}
+
+
+	return optimalFeatureCount
+
+}
+
 // numFeatures sets the minimun number of features to stop rfe, 0 means run until single feature
 // returns list of FeatureStats and importance scores
 func RFE(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, maxDepth, numLeaves int, numFeatures int) ([]FeatureStats, map[string]float64) {
