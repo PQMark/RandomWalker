@@ -251,7 +251,7 @@ func standardError(data []float64, mean float64) float64 {
 		diff := val - mean
 		sumSquaredDiffs += diff * diff
 	}
-	std := math.Sqrt(sumSquaredDiffs / float64(n))
+	std := math.Sqrt(sumSquaredDiffs / float64(n-1))
 
 	return std / math.Sqrt(float64(n))
 }
