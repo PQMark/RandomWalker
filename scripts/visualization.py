@@ -1,6 +1,9 @@
 import json
 import numpy as np 
 import matplotlib.pyplot as plt 
+import os
+
+os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "temp"))
 
 with open("MNIST.json", "r") as file:
     data = json.load(file)
