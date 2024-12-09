@@ -178,6 +178,8 @@ func RealDataBoruta() {
 	numIteration := 50
 	numFolds := 5
 
+	//Default: HyperParameters{LeafSize: 0, MaxDepth: 0, NTrees: 1000}
+
 	results := RunBoruta(dataset, labels, numIteration, numFolds, Optimization{Default: HyperParameters{LeafSize: 0, MaxDepth: 0, NTrees: 1000}})
 
 	fmt.Println(results)
