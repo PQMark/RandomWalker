@@ -1,8 +1,9 @@
 # Load the jsonlite package
 library(jsonlite)
+library(ggplot2)
 
 # Define the path to your JSON file
-json_file_path <- "results.json"
+json_file_path <- "src/RandomWalker/temp/results.json"
 
 # Read the JSON file
 json_data <- fromJSON(json_file_path)
@@ -13,9 +14,6 @@ json_data$Features_Count <- sapply(json_data$Features, length)
 
 data <- data.frame(NumFeatures = json_data$Features_Count,  AvgF1 = json_data$AvgF1, ErrorF1 = json_data$ErrorF1)
 data <- data[data$NumFeatures >= 1 & data$NumFeatures <= 20, ]
-
-library(ggplot2)
-
 
 p <- ggplot(data, aes(x = NumFeatures, y = AvgF1)) +   
   geom_line(colour = "blue") +   
@@ -35,3 +33,6 @@ p <- ggplot(data, aes(x = NumFeatures, y = AvgF1)) +
 
 # Display the plot
 print(p)
+
+
+ggsave("plot.png", plot = p, width = 8, height = 6, dpi = 300)
