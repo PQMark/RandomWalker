@@ -69,14 +69,6 @@ func RunBoruta(data *Dataset, labels []int, numIteration, numFolds int, optimiza
 			if hyperParams.NTrees == 0 {
 				hyperParams.NTrees = 1000
 			}
-
-			if hyperParams.MaxDepth == 0 {
-				hyperParams.MaxDepth = 10
-			}
-
-			if hyperParams.LeafSize == 0 {
-				hyperParams.LeafSize = 20
-			}
 		}
 	
 		// Boruta

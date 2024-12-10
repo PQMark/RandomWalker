@@ -14,6 +14,24 @@ type Counts struct{
 	FN int 
 }
 
+// takes in a Dataset object and a slice of features, returns data in the format of [][]float64
+func ConvertData(d *Dataset, features []string) [][]float64 {
+
+	data := make([][]float64, len(d.Instance))
+
+	// ranging over all the datapoints of d
+	for i, instance := range d.Instance {
+		data[i] = make([]float64, 0, len(features))
+
+		// for each row, append all value for each feature
+		for _, f := range features {
+			data[i] = append(data[i], instance.Features[f])
+		}
+	}
+
+	return data
+}
+
 // Train + Test
 func SplitTrainTest(data *Dataset, labels []int, ratio float64) (*Dataset, []int, *Dataset, []int) {
 	if ratio < 0 || ratio >= 1 {

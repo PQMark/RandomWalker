@@ -8,6 +8,7 @@
 #
 
 library(shiny)
+library(shinyjs)
 
 # Define server logic required to draw a histogram
 function(input, output, session) {
@@ -69,52 +70,122 @@ function(input, output, session) {
   })
   
   output$model_params <- renderUI({
-    req(input$file)       # ensure the file is uploaded
-    
-    switch(input$model, 
-           "Boruta" = {
-             tagList(
-               numericInput(
-                 inputId = "numIteration", 
-                 label = "Number of Iterations", 
-                 value = 30, 
-                 min = 1,
-                 max = 50
-               ), 
-               
-               numericInput(
-                 inputId = "numFolds", 
-                 label = "Number of Folds for CV", 
-                 value = 5, 
-                 min = 2
-               ), 
-               
-               numericInput(
-                 inputId = "Ntrees", 
-                 label = "Number of Trees", 
-                 value = 1000, 
-                 min = 10, 
-                 step = 100
+    if (input$data_source == "upload") {
+    req(input$file)}       # ensure the file is uploaded
+   
+    div(
+      style = "padding-left: 15px; border-left: 2px solid #ccc; margin-top: 10px;", 
+      switch(input$model, 
+             "Boruta" = {
+               tagList(
+                 numericInput(
+                   inputId = "numIteration", 
+                   label = span(style = "font-size: 12px;", "Number of Iterations"),
+                   value = 30, 
+                   min = 1,
+                   max = 50
+                 ), 
+                 
+                 numericInput(
+                   inputId = "numFolds", 
+                   label = span(style = "font-size: 12px;", "Number of Folds for CV"),
+                   value = 5, 
+                   min = 2
+                 ), 
+              
                )
-             )
-           }, 
-           "Permutation" = {
-             
-           }, 
-           "Recursive Feature Elimination" = {
-             
-           },
-           "mRMR" = {
-             
-           }
-           )
+             }, 
+             "Permutation" = {
+               tagList(
+                 numericInput(
+                   inputId = "numIteration", 
+                   label = span(style = "font-size: 12px;", "Number of Iterations"),
+                   value = if (input$data_source == "mnist") 50 else 30,  
+                   min = 1,
+                   max = 50
+                 ), 
+                 
+                 numericInput(
+                   inputId = "numFolds", 
+                   label = span(style = "font-size: 12px;", "Number of Folds for CV"),
+                   value = 5, 
+                   min = 2
+                 )
+               )
+             }, 
+             "Recursive Feature Elimination" = {
+               tagList(
+                 numericInput(
+                   inputId = "numIteration", 
+                   label = span(style = "font-size: 12px;", "Number of Iterations"),
+                   value = if (input$data_source == "mnist") 50 else 30,  
+                   min = 1,
+                   max = 50
+                 ), 
+                 
+                 numericInput(
+                   inputId = "numFolds", 
+                   label = span(style = "font-size: 12px;", "Number of Folds for CV"),
+                   value = 5, 
+                   min = 2
+                 ), 
+                 
+                 numericInput(
+                   inputId = "numFeatures", 
+                   label = span(style = "font-size: 12px;", "Min Number of Features"),
+                   value = if (input$data_source == "mnist") 30 else 1,
+                   min = 1, 
+                   step = 10
+                 )
+               )
+             },
+             "mRMR" = {
+               tagList(
+                 numericInput(
+                   inputId = "numIteration", 
+                   label = span(style = "font-size: 12px;", "Number of Iterations"),
+                   value = if (input$data_source == "mnist") 50 else 30,  
+                   min = 1,
+                   max = 50
+                 ), 
+                 
+                 numericInput(
+                   inputId = "numFolds", 
+                   label = span(style = "font-size: 12px;", "Number of Folds for CV"),
+                   value = 5, 
+                   min = 2
+                 ), 
+                 
+                 numericInput(
+                   inputId = "binSize", 
+                   label = span(style = "font-size: 12px;", "Number of Bins"),
+                   value = 15,
+                   min = 1, 
+                   step = 1
+                 ), 
+                 
+                 numericInput(
+                   inputId = "maxFeatures", 
+                   label = span(style = "font-size: 12px;", "Max Number of Selected Features"),
+                   value = 20,
+                   min = 1, 
+                   step = 1
+                 )
+               )
+             }
+      )
+    )
   })
+    
+  
   
   output$advanced_params <- renderUI({
     #req(input$file)
     req(input$model %in% c("Boruta", "Permutation", "Recursive Feature Elimination"))
     
     tagList(
+      useShinyjs(),
+      
       tags$button(
         type = "button", 
         class = "btn btn-info", 
@@ -126,11 +197,39 @@ function(input, output, session) {
       div(
         id = "advancedParams", 
         class = "collapse", 
-        style = "margin-top: 10px;", 
+        style = "margin-top: 10px;",
         
         div(
           style = "margin-bottom: 10px;", 
-          numericInput(
+          checkboxInput(
+            inputId = "default_optimization",
+            label = "Default Optimization",
+            value = FALSE
+          )
+        ),
+        
+        div(
+          style = "margin-bottom: 10px;", 
+          selectizeInput(
+            inputId = "Ntrees", 
+            label = tags$span(
+              "Number of Trees:", 
+              tags$span(
+                class = "glyphicon glyphicon-question-sign", 
+                style = "cursor: pointer; margin-left: 5px;", 
+                `data-toggle` = "tooltip",
+                title = "Default is 1000 if left blank."
+              )
+            ),
+            choices = NULL,
+            multiple = TRUE,
+            options = list(create = TRUE, placeholder = "Default: 1000")
+          )
+        ),
+        
+        div(
+          style = "margin-bottom: 10px;", 
+          selectizeInput(
             inputId = "num_leaves", 
             label = tags$span(
               "Number of Leaves:", 
@@ -141,13 +240,15 @@ function(input, output, session) {
                 title = "Default is 10 if left blank."
               )
             ),
-            value = NULL
+            choices = NULL,
+            multiple = TRUE,
+            options = list(create = TRUE, placeholder = "Default: 10")
           )
         ), 
         
         div(
           style = "margin-bottom: 10px;", 
-          numericInput(
+          selectizeInput(
             inputId = "max_depth", 
             label = tags$span(
               "Max Depth:", 
@@ -158,18 +259,110 @@ function(input, output, session) {
                 title = "Default is 5 if left blank."
               )
             ),
-            value = NULL
+            choices = NULL,
+            multiple = TRUE,
+            options = list(create = TRUE, placeholder = "Enter values (e.g. 20,30)")
           )
-        )
+        ), 
+        
+        if (input$model == "Recursive Feature Elimination") {
+         tagList(
+          div(
+            style = "margin-bottom: 10px;", 
+            selectizeInput(
+              inputId = "InitialThreshold", 
+              label = tags$span(
+                "Initial Ratio:", 
+                tags$span(
+                  class = "glyphicon glyphicon-question-sign", 
+                  style = "cursor: pointer; margin-left: 5px;", 
+                  `data-toggle` = "tooltip",
+                  title = "The initial percentage of features to drop. Default value is 0.2."
+                )
+              ),
+              choices = NULL,
+              multiple = FALSE,
+              options = list(create = TRUE, placeholder = "Default: 0.2", maxItems = '1')
+            )
+          ),
+          
+          div(
+            style = "margin-bottom: 10px;", 
+            selectizeInput(
+              inputId = "decayFactor", 
+              label = tags$span(
+                "Decay Factor:", 
+                tags$span(
+                  class = "glyphicon glyphicon-question-sign", 
+                  style = "cursor: pointer; margin-left: 5px;", 
+                  `data-toggle` = "tooltip",
+                  title = "Control how fast the removing ratio will decay. Default value is 1.5."
+                )
+              ),
+              choices = NULL,
+              multiple = FALSE,
+              options = list(create = TRUE, placeholder = "Default: 1.5", maxItems = '1')
+            )
+          )
+         )
+          
+        }
         
       )
       
     )
     
   })
+    
   
   session$onFlushed(function() {
     session$sendCustomMessage(type = 'tooltip-init', message = NULL)
+  })
+  
+  
+  observeEvent(input$default_optimization, {
+    if (input$default_optimization) {
+      shinyjs::disable("num_leaves") 
+      shinyjs::disable("max_depth")
+      shinyjs::disable("Ntrees")
+    } else {
+      shinyjs::enable("num_leaves")
+      shinyjs::enable("max_depth")
+      shinyjs::enable("Ntrees")
+    }
+  })
+  
+  observeEvent(input$goButton, {
+    
+    # basic parameters
+    numIteration <- input$numIteration
+    numFolds <- input$numFolds
+    
+    if (input$model == "Recursive Feature Elimination") {
+      numFeatures <- input$numFeatures
+      
+      InitialThreshold <- if (!is.null(input$InitialThreshold) && input$InitialThreshold != "") {
+        as.numeric(input$InitialThreshold)
+      } else {
+        0.2  # default
+      }
+      
+      decayFactor <- if (!is.null(input$decayFactor) && input$decayFactor != "") {
+        as.numeric(input$decayFactor)
+      } else {
+        1.5  # default
+      }
+      
+      lrParams <- list(
+        InitialThreshold = InitialThreshold,
+        decayFactor = decayFactor
+      )
+      
+      # Optimization
+      
+    }
+    
+    
   })
   
 }
