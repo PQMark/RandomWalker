@@ -11,14 +11,13 @@ library(shiny)
 
 # Define UI for application that draws a histogram
 fluidPage(
-
+  
     # Application title
     div(style = "text-align: center;",
         h1("Welcome to MarkerMate")
     ),
 
     sidebarLayout(
-      
         sidebarPanel(
             # File input
             radioButtons(
@@ -31,10 +30,28 @@ fluidPage(
             # File input -- Upload file
             conditionalPanel(
               condition = "input.data_source == 'upload'",
-              fileInput(
-                inputId = "file", 
-                label = "Choose CSV File", 
-                accept = c(".csv")
+              tags$div(
+                style = "padding-left: 15px; border-left: 2px solid #ccc; margin-top: 10px;",
+                
+                # File Input
+                fileInput(
+                  inputId = "file", 
+                  label = tags$span(style = "font-size: 12px;", "Choose CSV File"),
+                  accept = c(".csv")
+                ),
+                
+                # Handling Missing Values
+                selectInput(
+                  inputId = "missing_method",
+                  label = tags$span(style = "font-size: 12px;", "Select Method"),
+                  choices = c(
+                    "Select a method..."='',
+                    "Impute with Mean" = "mean",
+                    "Impute with Median" = "median",
+                    "Impute with k-Nearest Neighbors (kNN)" = "knn"
+                  )
+                )
+                
               )
             ),
             
@@ -58,8 +75,6 @@ fluidPage(
                 )
               )
             ),
-            
-            
             
         
             # Model selection

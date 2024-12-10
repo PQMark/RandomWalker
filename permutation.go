@@ -146,3 +146,5 @@ func trainRandomForestPermute(d, test *Dataset, dLabel, tLabel []int, features [
 
 	return F1Score
 }
+
+//End
