@@ -38,6 +38,22 @@ fluidPage(
               )
             ),
             
+            conditionalPanel(
+              condition = "input.data_source == 'upload'",
+              tags$div(
+                style = "padding-left: 15px; border-left: 2px solid #ccc; margin-top: 10px;",
+                
+                selectInput(
+                  inputId = "missing",
+                  label = tags$span(style = "font-size: 12px;", "Missing value processing method"),
+                  choices = c(
+                    "Delete the sample",
+                    "Take mean of the feature"
+                  )
+                )
+              )
+            ),
+            
             # File input -- Use MNIST
             conditionalPanel(
               condition = "input.data_source == 'mnist'",
