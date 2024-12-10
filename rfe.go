@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-
-	randomforest "github.com/malaschitz/randomForest"
+	"math"
+	"github.com/malaschitz/randomForest"
 )
 
 type FeatureStats struct {
@@ -12,59 +12,64 @@ type FeatureStats struct {
 	ErrorF1  float64
 }
 
-// outputs optimal number of features 
-func RFECV(data *Dataset, labels []int, numIteration, numEstimators, maxDepth, numLeaves, numFolds, numFeatures int) int {
+type Lr struct {
+	InitialThreshold float64
+	decayFactor float64
+}
+
+func RunRFE(data *Dataset, labels []int, numIteration, numFolds, numFeatures int, optimization Optimization, lrParams Lr) [][]FeatureStats {
+	
+	fmt.Println("Running RFE")
+
 	dataFolds, labelFolds := FoldSplit(data, labels, numFolds)
-	results := make([][]float64, numFolds)
+	results := make([][]FeatureStats, numFolds)
+	var hyperGrid []HyperParameters
+	var hyperParams HyperParameters
 
 	for i := 0; i < numFolds; i++ {
+		fmt.Println("starting RFECV for fold", i)
+
+		// Get Inner train & Outer test
 		innerTrain, innerLabel, outerTest, outerLabel := GetFoldData(dataFolds, labelFolds, i)
 
-		featureStats, _ := RFE(innerTrain, outerTest, innerLabel, outerLabel, numIteration, numEstimators, maxDepth, numLeaves, 0)
+		if optimization.Optimize {
+			// Perform Optimization
 
-		// range over all the feature stats in list feature stat
-		// set each col of result[i] as f1 score
-		for j := range results[i] {
-			if j < len(featureStats) {
-				results[i][j] = featureStats[j].AvgF1
+			// 10 fold CV for inner train (HP Optimization)
+			// Define grid search space
+			if optimization.DefaultGrid {
+				// Use default grid
+				hyperGrid = hyperparameterGridBoruta(int(float64(len(innerLabel)) * 0.9))
+			} else {
+				// User specified
+				hyperGrid = optimization.HyperParamsGrid
+			}
+
+			bestParams, bestF1 := GridSearchParallel(innerTrain, innerLabel, 10, optimization.numProcs, hyperGrid)
+			fmt.Printf("Best Hyperparameters - NTrees: %d, MaxDepth: %d, LeafSize: %d\n", bestParams.NTrees, bestParams.MaxDepth, bestParams.LeafSize)
+			fmt.Printf("Best F1 Score: %.2f\n", bestF1)
+
+			hyperParams = bestParams
+		} else {
+			// Use default value for REF
+			hyperParams = optimization.Default
+
+			if hyperParams.NTrees == 0 {
+				hyperParams.NTrees = 1000
 			}
 		}
 
+		// RFE 
+		featureStats := RFE(innerTrain, outerTest, innerLabel, outerLabel, numIteration, hyperParams.NTrees, hyperParams.MaxDepth, hyperParams.LeafSize, lrParams, numFeatures)
+		
+		results[i] = featureStats
 	}
 
-	// map to store feature count to avg score
-	avgScores := make(map[int]float64, 0)
-
-	// range over all the folds for each feature count
-	for j := range results[0] {
-		total := 0.0
-
-		for i := range numFolds {
-			total += results[i][j]			
-		}
-
-		avgScores[j+1] = total/float64(numFolds)
-	}
-
-	// range over the map to identiy feature count with the highest f1 score
-	maxAvgF1 := 0.0
-	optimalFeatureCount := 0
-	for featureCount, AvgF1 := range avgScores {
-		if AvgF1 > maxAvgF1 {
-			maxAvgF1 = AvgF1
-			optimalFeatureCount = featureCount
-		}
-	}
-
-
-	return optimalFeatureCount
-
+	return results
 }
 
-// numFeatures sets the minimun number of features to stop rfe, 0 means run until single feature
-// returns list of FeatureStats and importance scores
-func RFE(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, maxDepth, numLeaves int, numFeatures int) ([]FeatureStats, map[string]float64) {
-
+func RFE(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, maxDepth, numLeaves int, lrParams Lr, numFeatures int) []FeatureStats {
+	
 	results := make([]FeatureStats, 0)
 	thresholdFeatures := false
 
@@ -86,8 +91,8 @@ func RFE(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, ma
 	for {
 		run++
 
-		tempResults := make([]float64, 0, numIteration)
-		featureImportances := make([][]float64, numIteration)
+		tempResults := make([]float64, 0, numIteration)			// store the F1 score
+		featureImportances := make([][]float64, numIteration)	// store the importance score
 
 		// Train the RF model numIteration times
 		for i := 0; i < numIteration; i++ {
@@ -122,28 +127,18 @@ func RFE(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, ma
 		// Append to result
 		results = append(results, stat)
 
-		// if min number of features indicated, return when len(features) == numFeatures
-		// else repeat until single feature 
-		if thresholdFeatures {
-			if len(featuresToConsider) <= numFeatures {
-				singleResult := make([]FeatureStats, 0)
-				singleResult = append(singleResult, results[run-1])
-				return singleResult, importanceScores
+		// using power law decay
+		threshold := FeatureDecayScheduler(&featuresToConsiderCopy, len(d.Features), lrParams)
 
-			}
+		// Discard the features 
+		DiscardFeatures(featureImportances, &featuresToConsider, threshold)
 
-		} else {
-			if len(featuresToConsider) == 1 {
-				return results, importanceScores
-			}
+		// Check the number of features remaining 
+		if len(featuresToConsider) <= numFeatures {
+			return results
 		}
 
-
-		// Discard the features with last 3% FI scores
-		DiscardFeatures(featureImportances, &featuresToConsider, 3)
-
 		fmt.Println(featuresToConsider)
-
 	}
 }
 
@@ -202,8 +197,7 @@ func Normalization(data []float64) {
 }
 
 // Fine (marginal cases not tested)
-func DiscardFeatures(data [][]float64, features *[]string, a int) {
-	threshold := float64(a) / float64(100)
+func DiscardFeatures(data [][]float64, features *[]string, threshold float64) {
 	length := len(*features)
 	n := float64(len(data))
 
@@ -249,20 +243,96 @@ func DiscardFeatures(data [][]float64, features *[]string, a int) {
 
 }
 
-// takes in a Dataset object and a slice of features, returns data in the format of [][]float64
-func ConvertData(d *Dataset, features []string) [][]float64 {
-
-	data := make([][]float64, len(d.Instance))
-
-	// ranging over all the datapoints of d
-	for i, instance := range d.Instance {
-		data[i] = make([]float64, 0, len(features))
-
-		// for each row, append all value for each feature
-		for _, f := range features {
-			data[i] = append(data[i], instance.Features[f])
-		}
+func FeatureDecayScheduler(features *[]string, numTotalFeatures int, lrParams Lr) float64 {
+	// default initial threshold and decay factor
+	if lrParams.InitialThreshold == 0.0 {
+		lrParams.InitialThreshold = 0.2
 	}
 
-	return data
+	if lrParams.decayFactor == 0.0 {
+		lrParams.decayFactor = 1.5
+	}
+
+	var threshold float64
+	remainFeatures := len(*features)
+
+	//fmt.Println(numTotalFeatures)
+	remainingPercent := float64(remainFeatures)/float64(numTotalFeatures)
+	if remainingPercent <= 0.20 {
+		threshold = 0.03
+		fmt.Println("t: ", threshold)
+
+	} else {
+		// fmt.Println(initialThreshold)
+		// fmt.Println(decayFactor)
+		threshold = float64(lrParams.InitialThreshold) * math.Pow(remainingPercent, lrParams.decayFactor)
+		fmt.Println("t: ", threshold)
+	}
+	return threshold
+}
+
+// Mode: 0 --> get the best, output those with frequency above binomial threshold(default)
+// Mode: otherwise --> pick feature subset with the same size
+
+// threshold: 0 --> use default 
+// A threshold of 1 will output the feature subset union
+func getFeaturesRFE(results [][]FeatureStats, mode, threshold int) FeatureStats {
+
+	if threshold == 0 {
+		threshold = CalculateThreshold(len(results))
+	}
+
+	counts := make(map[string]int)
+    tempResults := make([]float64, 0)
+
+	for i := 0; i < len(results); i++ {
+        var selectedSubset []string
+        maxScore := 0.0
+		minDiff := math.Inf(1)
+
+        for j := 0; j < len(results[i]); j++ {
+
+            if mode == 0 {
+                // Get the subset with the highest score
+                if results[i][j].AvgF1 > maxScore {
+                    maxScore = results[i][j].AvgF1
+                    selectedSubset = results[i][j].Features
+                }
+            } else {
+                // Pick subsets with the size close to 'mode'
+				diff := math.Abs(float64(len(results[i][j].Features) - mode))
+
+				if diff < minDiff {
+                    selectedSubset = results[i][j].Features
+                    maxScore = results[i][j].AvgF1
+                    minDiff = diff
+				} else if diff > minDiff {
+					break
+				}
+            }
+        }
+
+        // Record frequencies of features in the selected subset
+        for _, feature := range selectedSubset {
+            counts[feature]++
+        }
+
+        tempResults = append(tempResults, maxScore)
+    }
+
+	avgF1 := Average(tempResults)
+    errorF1 := standardError(tempResults, avgF1)
+
+	selectedFeatures := make([]string, 0)
+    for feature, frequency := range counts {
+        if frequency >= threshold {
+            selectedFeatures = append(selectedFeatures, feature)
+        }
+    }
+
+	return FeatureStats{
+        Features: selectedFeatures,
+        AvgF1:    avgF1,
+        ErrorF1:  errorF1,
+    }
 }

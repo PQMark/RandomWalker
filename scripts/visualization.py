@@ -1,11 +1,23 @@
 import json
 import numpy as np 
 import matplotlib.pyplot as plt 
+import os
+import sys 
+
+os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "temp"))
+
+
+if len(sys.argv) > 1:
+    filename = sys.argv[1]
+    print(f"Received filename: {filename}")
+else:
+    print("No filename provided.")
+
 
 with open("MNIST.json", "r") as file:
     data = json.load(file)
 
-with open("MNIST_Output.json", "r") as file:
+with open(filename, "r") as file:   #MNIST_Output.json
     result = json.load(file)
 
 def plot_digit(ax, image_data):
