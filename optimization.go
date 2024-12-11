@@ -3,29 +3,18 @@ package main
 import (
 	"fmt"
 
-	"github.com/malaschitz/randomForest"
+	randomforest "github.com/malaschitz/randomForest"
 )
-
-type HyperParameters struct {
-	NTrees int
-	MaxDepth int 
-	LeafSize int
-}
-
-type SearchResult struct {
-	Params HyperParameters
-	F1Avg float64
-}
 
 // number of trees
 // Leaf size : default 1 (less than 20 entries), 50 (more than 1000 entries), # entries / 20 (Between)
-// Max depth : default 10 
-// use F1 score for potentially imbalanced dataset 
-// Fine 
+// Max depth : default 10
+// use F1 score for potentially imbalanced dataset
+// Fine
 func GridSearchParallel(data *Dataset, labels []int, numFolds, numProcs int, hyperGrid []HyperParameters) (HyperParameters, float64) {
 	dataFolds, labelFolds := FoldSplit(data, labels, numFolds)
 
-	// Define search grid 
+	// Define search grid
 	// hyperGrid := hyperparameterGridBoruta(len(labels))
 
 	resultsChan := make(chan SearchResult, len(hyperGrid))
@@ -38,11 +27,11 @@ func GridSearchParallel(data *Dataset, labels []int, numFolds, numProcs int, hyp
 		go GridSearch(params, dataFolds, labelFolds, resultsChan, availability)
 	}
 
-	var bestParams HyperParameters 
+	var bestParams HyperParameters
 	bestF1 := -1.0
 
 	for i := 0; i < len(hyperGrid); i++ {
-		res := <- resultsChan
+		res := <-resultsChan
 
 		//fmt.Println("P", res.Params)
 		//fmt.Println("F", res.F1Avg)
@@ -56,7 +45,7 @@ func GridSearchParallel(data *Dataset, labels []int, numFolds, numProcs int, hyp
 	}
 
 	return bestParams, bestF1
-}	
+}
 
 func hyperparameterGridBoruta(dataLength int) []HyperParameters {
 	// nTrees := make([]int, 5)
@@ -82,9 +71,9 @@ func hyperparameterGridBoruta(dataLength int) []HyperParameters {
 	}
 
 	/*
-	for i := 0; i < 5; i++ {
-		nTrees[i] = 100 + i * 500
-	}
+		for i := 0; i < 5; i++ {
+			nTrees[i] = 100 + i * 500
+		}
 	*/
 
 	// Get all the combinations
@@ -93,7 +82,7 @@ func hyperparameterGridBoruta(dataLength int) []HyperParameters {
 		for _, depth := range maxDepth {
 			for _, leaf := range leafSize {
 				grid = append(grid, HyperParameters{
-					NTrees: numTree,
+					NTrees:   numTree,
 					MaxDepth: depth,
 					LeafSize: leaf,
 				})
@@ -118,13 +107,13 @@ func GridSearch(params HyperParameters, dataFolds []*Dataset, labelFolds [][]int
 		// For large dataset, set the number of estimators to 1000
 		// selectedFeatures, _, _:= Boruta(trainData, trainLabel, 50, 500)
 
-		// Retain data with all features 
+		// Retain data with all features
 		trainDataProcessed := ConvertToDataBoruta(trainData, trainData.Features)
 		valDataProcessed := ConvertToDataBoruta(valData, valData.Features)
 
 		forest := randomforest.Forest{
 			Data: randomforest.ForestData{
-				X: trainDataProcessed,
+				X:     trainDataProcessed,
 				Class: trainLabel,
 			},
 			LeafSize: params.LeafSize,
@@ -132,7 +121,7 @@ func GridSearch(params HyperParameters, dataFolds []*Dataset, labelFolds [][]int
 		}
 		forest.Train(params.NTrees)
 
-		// predict on the validation set 
+		// predict on the validation set
 		predictions := Predict(&forest, valDataProcessed)
 
 		// f1 score
@@ -141,16 +130,15 @@ func GridSearch(params HyperParameters, dataFolds []*Dataset, labelFolds [][]int
 		f1Scores = append(f1Scores, f1)
 	}
 
-	// Calculate the average 
+	// Calculate the average
 	avgF1 := Average(f1Scores)
 
-	// Send results to channel 
+	// Send results to channel
 	resultChan <- SearchResult{
 		Params: params,
-		F1Avg: avgF1,
+		F1Avg:  avgF1,
 	}
 
 	// release one spot
-	<- a 
+	<-a
 }
-
