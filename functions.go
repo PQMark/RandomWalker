@@ -2,17 +2,11 @@ package main
 
 import (
 	//"fmt"
-	"math/rand"
 	"math"
+	"math/rand"
 
-	"github.com/malaschitz/randomForest"
+	randomforest "github.com/malaschitz/randomForest"
 )
-
-type Counts struct{
-	TP int 
-	FP int
-	FN int 
-}
 
 // takes in a Dataset object and a slice of features, returns data in the format of [][]float64
 func ConvertData(d *Dataset, features []string) [][]float64 {
@@ -48,15 +42,15 @@ func SplitTrainTest(data *Dataset, labels []int, ratio float64) (*Dataset, []int
 	trainData := &Dataset{
 		Instance: make([]*Instance, 0, split),
 		Features: data.Features,
-		Label: data.Label,
+		Label:    data.Label,
 	}
 	testData := &Dataset{
-		Instance: make([]*Instance, 0, len(labels) - split),
+		Instance: make([]*Instance, 0, len(labels)-split),
 		Features: data.Features,
-		Label: data.Label,
+		Label:    data.Label,
 	}
 	trainlabelss := make([]int, 0, split)
-	testlabelss := make([]int, 0, len(labels) - split)
+	testlabelss := make([]int, 0, len(labels)-split)
 
 	for i, idx := range indices {
 		if i < split {
@@ -71,10 +65,10 @@ func SplitTrainTest(data *Dataset, labels []int, ratio float64) (*Dataset, []int
 	return trainData, trainlabelss, testData, testlabelss
 }
 
-// Folds of data 
-// Fine 
-func FoldSplit(data *Dataset, labels []int, numFolds int) ([]*Dataset, [][]int){
-	if numFolds < 2{
+// Folds of data
+// Fine
+func FoldSplit(data *Dataset, labels []int, numFolds int) ([]*Dataset, [][]int) {
+	if numFolds < 2 {
 		panic("At least 2 folds")
 	}
 
@@ -82,35 +76,35 @@ func FoldSplit(data *Dataset, labels []int, numFolds int) ([]*Dataset, [][]int){
 		panic("Wrong number of instances and labelss")
 	}
 
-	// shuffle the data 
+	// shuffle the data
 	indices := rand.Perm(len(labels))
 	foldSize := len(indices) / numFolds
 	remainder := len(indices) % numFolds
 
 	// Distribute the remainder
 	foldSizes := make([]int, numFolds)
-	for i := range(foldSizes) {
+	for i := range foldSizes {
 		foldSizes[i] = foldSize
 		if i < remainder {
-			foldSizes[i] ++
+			foldSizes[i]++
 		}
 	}
 
 	dataFolds := make([]*Dataset, numFolds)
 	labelFolds := make([][]int, numFolds)
-	
+
 	offset := 0
 	for i, size := range foldSizes {
-		
+
 		dataset := &Dataset{
 			Instance: make([]*Instance, 0, size),
 			Features: data.Features,
-			Label: data.Label,
+			Label:    data.Label,
 		}
 		label := make([]int, 0, size)
 
 		for n := 0; n < size; n++ {
-			idx := indices[n + offset]
+			idx := indices[n+offset]
 			dataset.Instance = append(dataset.Instance, data.Instance[idx])
 			label = append(label, labels[idx])
 		}
@@ -124,7 +118,7 @@ func FoldSplit(data *Dataset, labels []int, numFolds int) ([]*Dataset, [][]int){
 	return dataFolds, labelFolds
 }
 
-// Fine 
+// Fine
 func GetFoldData(dataFolds []*Dataset, labelFolds [][]int, i int) (*Dataset, []int, *Dataset, []int) {
 	numFolds := len(labelFolds)
 
@@ -132,16 +126,16 @@ func GetFoldData(dataFolds []*Dataset, labelFolds [][]int, i int) (*Dataset, []i
 	valLabel := labelFolds[i]
 
 	trainSize := 0
-    for n := 0; n < numFolds; n++ {
-        if n != i {
-            trainSize += len(labelFolds[n])
-        }
-    }
+	for n := 0; n < numFolds; n++ {
+		if n != i {
+			trainSize += len(labelFolds[n])
+		}
+	}
 
 	trainData := &Dataset{
 		Instance: make([]*Instance, 0, trainSize),
 		Features: dataFolds[0].Features,
-		Label: dataFolds[0].Label,
+		Label:    dataFolds[0].Label,
 	}
 	trainLabels := make([]int, 0)
 
@@ -155,7 +149,7 @@ func GetFoldData(dataFolds []*Dataset, labelFolds [][]int, i int) (*Dataset, []i
 	return trainData, trainLabels, valData, valLabel
 }
 
-// Based on weightedVotes 
+// Based on weightedVotes
 // Fine
 func Predict(forest *randomforest.Forest, data [][]float64) []int {
 	predictions := make([]int, len(data))
@@ -166,7 +160,7 @@ func Predict(forest *randomforest.Forest, data [][]float64) []int {
 		maxClass := 0
 		maxVote := votes[0]
 
-		for j := 1; j < len(votes); j ++ {
+		for j := 1; j < len(votes); j++ {
 			if votes[j] > maxVote {
 				maxVote = votes[j]
 				maxClass = j
@@ -179,7 +173,7 @@ func Predict(forest *randomforest.Forest, data [][]float64) []int {
 	return predictions
 }
 
-// Weighted F1 score 
+// Weighted F1 score
 // Fine
 func GetF1Score(prediction []int, real []int) float64 {
 	if len(prediction) != len(real) {
@@ -201,9 +195,9 @@ func GetF1Score(prediction []int, real []int) float64 {
 		}
 
 		if pred == label {
-			counts[pred].TP ++
+			counts[pred].TP++
 		} else {
-			counts[pred].FP ++
+			counts[pred].FP++
 			counts[label].FN++
 		}
 	}
@@ -214,28 +208,28 @@ func GetF1Score(prediction []int, real []int) float64 {
 	for _, cnt := range counts {
 		var precision, recall, f1 float64
 
-		// Calculate precision 
-		if cnt.TP + cnt.FP == 0 {
+		// Calculate precision
+		if cnt.TP+cnt.FP == 0 {
 			precision = 0.0
 		} else {
-			precision = float64(cnt.TP) / float64(cnt.TP + cnt.FP)
+			precision = float64(cnt.TP) / float64(cnt.TP+cnt.FP)
 		}
 
-		// Calculate recall 
-		if cnt.TP + cnt.FN == 0{
+		// Calculate recall
+		if cnt.TP+cnt.FN == 0 {
 			recall = 0.0
 		} else {
-			recall =  float64(cnt.TP) / float64(cnt.TP + cnt.FN)
+			recall = float64(cnt.TP) / float64(cnt.TP+cnt.FN)
 		}
 
-		// Calculate F1 score 
-		if precision + recall == 0{
+		// Calculate F1 score
+		if precision+recall == 0 {
 			f1 = 0.0
 		} else {
 			f1 = 2.0 * (precision * recall) / (precision + recall)
 		}
 
-		weightedF1 += f1 * float64(cnt.FN + cnt.TP)
+		weightedF1 += f1 * float64(cnt.FN+cnt.TP)
 		totalSupport += cnt.FN + cnt.TP
 
 		// fmt.Printf("Class %d: Precision=%.4f, Recall=%.4f, F1=%.4f", cls, precision, recall, f1)
@@ -244,14 +238,14 @@ func GetF1Score(prediction []int, real []int) float64 {
 	weightedF1 /= float64(totalSupport)
 
 	return weightedF1
-}	
+}
 
 func Average(lst []float64) float64 {
-	
+
 	a := 0.0
 
 	for _, val := range lst {
-		a += val 
+		a += val
 	}
 
 	return a / float64(len(lst))
@@ -263,7 +257,7 @@ func standardError(data []float64, mean float64) float64 {
 		return 0.0
 	}
 
-	// Calculate SD 
+	// Calculate SD
 	sumSquaredDiffs := 0.0
 	for _, val := range data {
 		diff := val - mean

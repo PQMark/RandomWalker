@@ -3,12 +3,9 @@ package main
 import (
 	"fmt"
 	"math"
-	"github.com/malaschitz/randomForest"
-)
 
-type Numeric interface{
-	int | int8 | int16 | int32 | int64 | float32 | float64
-}
+	randomforest "github.com/malaschitz/randomForest"
+)
 
 func RunmRMR(data *Dataset, labels []int, numIteration, numFolds, binSize, maxFeatures int) []FeaturesF1 {
 
@@ -61,8 +58,8 @@ func RunmRMR(data *Dataset, labels []int, numIteration, numFolds, binSize, maxFe
 // for classification only now
 // class is mapped to 0-??
 // without extremely small value correction
-func mRMR_Discrete(dataRaw [][]float64, class []int, binSize, maxFeatures int) ([]int, []float64, map[[2]int]float64){
-	
+func mRMR_Discrete(dataRaw [][]float64, class []int, binSize, maxFeatures int) ([]int, []float64, map[[2]int]float64) {
+
 	dataRaw = Standardize(dataRaw)
 
 	data := Discretization(dataRaw, binSize)
@@ -73,10 +70,10 @@ func mRMR_Discrete(dataRaw [][]float64, class []int, binSize, maxFeatures int) (
 		maxFeatures = len(data[0])
 	}
 
-	featuresToConsider := make([]int, 0, len(data[0]))	
+	featuresToConsider := make([]int, 0, len(data[0]))
 	selectedFeatures := make([]int, 0, len(data[0]))
 	redundancyMap := make(map[[2]int]float64)
-	
+
 	// Discard if relevance MI = 0
 	for i, val := range relevanceAll {
 		if val > 0.0 {
@@ -90,16 +87,16 @@ func mRMR_Discrete(dataRaw [][]float64, class []int, binSize, maxFeatures int) (
 		redundancy := make([]float64, len(featuresToConsider))
 
 		if i == 0 {
-			// Initialize 
-			redundancy = make([]float64, len(featuresToConsider))   // all 0 
+			// Initialize
+			redundancy = make([]float64, len(featuresToConsider)) // all 0
 		} else {
-			// Calculate redundancy 
+			// Calculate redundancy
 			lastSelectedF := selectedFeatures[len(selectedFeatures)-1]
 
-			// Update redundancyMap 
+			// Update redundancyMap
 			redundancyMap = RedundancyMIUpdate(data, featuresToConsider, lastSelectedF, redundancyMap)
 
-			// Calculate redundancy for each feature candidate 
+			// Calculate redundancy for each feature candidate
 			for i, val1 := range featuresToConsider {
 				miSum := 0.0
 				for _, val2 := range selectedFeatures {
@@ -117,7 +114,7 @@ func mRMR_Discrete(dataRaw [][]float64, class []int, binSize, maxFeatures int) (
 
 		score := PairwiseDeduction(relevance, redundancy)
 		fmt.Println(score)
-		
+
 		if CheckIfAllNegative(score) {
 			break
 		}
@@ -127,7 +124,7 @@ func mRMR_Discrete(dataRaw [][]float64, class []int, binSize, maxFeatures int) (
 		selectedFeatures = append(selectedFeatures, feature)
 		featuresToConsider = Delete(featuresToConsider, idx)
 
-	}             
+	}
 
 	return selectedFeatures, relevanceAll, redundancyMap
 }
@@ -186,7 +183,7 @@ func Standardize(dataRaw [][]float64) [][]float64 {
 
 func Discretization(data [][]float64, binSize int) [][]int {
 	if len(data) == 0 || len(data[0]) == 0 {
-		return nil 
+		return nil
 	}
 
 	r := len(data)
@@ -195,7 +192,7 @@ func Discretization(data [][]float64, binSize int) [][]int {
 	min := make([]float64, c)
 	max := make([]float64, c)
 
-	for j := 0; j < c; j ++ {
+	for j := 0; j < c; j++ {
 
 		min[j] = data[0][j]
 		max[j] = data[0][j]
@@ -216,7 +213,7 @@ func Discretization(data [][]float64, binSize int) [][]int {
 	}
 
 	for j := 0; j < c; j++ {
-		
+
 		binWidth := (max[j] - min[j]) / float64(binSize)
 
 		for i := 0; i < r; i++ {
@@ -241,7 +238,7 @@ func RelevanceMI(data [][]int, class []int) []float64 {
 	for i := 0; i < n; i++ {
 		feature := getCol(data, i)
 		mi := MutualInfo(feature, class)
-		MI[i] = mi 
+		MI[i] = mi
 	}
 
 	return MI
@@ -278,7 +275,7 @@ func ShannonEntropy(sample []int) float64 {
 	sum := 0.0
 
 	for _, val := range sample {
-		count[val] ++
+		count[val]++
 	}
 
 	for _, val := range count {
@@ -287,7 +284,7 @@ func ShannonEntropy(sample []int) float64 {
 		sum += temp
 	}
 
-	return -sum 
+	return -sum
 }
 
 func ShannonJointEntropy(data1, data2 []int) float64 {
@@ -315,7 +312,6 @@ func ShannonJointEntropy(data1, data2 []int) float64 {
 	return -sum
 }
 
-
 func getCol(data [][]int, i int) []int {
 	col := make([]int, len(data))
 
@@ -326,9 +322,8 @@ func getCol(data [][]int, i int) []int {
 	return col
 }
 
-
 func selectByIndex[T any](data []T, idx []int) []T {
-	var r []T 
+	var r []T
 
 	for _, index := range idx {
 		if index < 0 || index >= len(data) {
@@ -355,22 +350,22 @@ func PairwiseDeduction[T Numeric](data1, data2 []T) []T {
 		r[i] = sum
 	}
 
-	return r 
+	return r
 }
 
 // return the index of the maximum value in a list, -1 if data list is empty
-func getMaxIndex[T Numeric] (data []T) int {
+func getMaxIndex[T Numeric](data []T) int {
 	if (len(data)) == 0 {
 		return -1
 	}
 
 	a := data[0]
 
-	idx := 0 
+	idx := 0
 
 	for i, val := range data {
 		if val > a {
-			a = val 
+			a = val
 			idx = i
 		}
 	}
@@ -379,9 +374,9 @@ func getMaxIndex[T Numeric] (data []T) int {
 }
 
 // remove data at index idx
-func Delete[T any] (data []T, idx int) []T {
+func Delete[T any](data []T, idx int) []T {
 	if len(data) == 0 || idx < 0 || idx >= len(data) {
-		return data 
+		return data
 	}
 
 	data = append(data[:idx], data[idx+1:]...)
@@ -391,8 +386,8 @@ func Delete[T any] (data []T, idx int) []T {
 
 // return true if all all data are negative
 func CheckIfAllNegative(data []float64) bool {
-	for _,val := range data {
-		if val > 0.0 && val > 0.001{
+	for _, val := range data {
+		if val > 0.0 && val > 0.001 {
 			return false
 		}
 	}

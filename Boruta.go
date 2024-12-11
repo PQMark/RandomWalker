@@ -8,25 +8,6 @@ import (
 	randomforest "github.com/malaschitz/randomForest"
 )
 
-type Dataset struct {
-	Instance []*Instance
-	Features []string
-	Label    string
-}
-
-type Instance struct {
-	Features map[string]float64
-	Label    string
-}
-
-type Optimization struct {
-	Optimize bool 
-	Default HyperParameters
-	DefaultGrid bool
-	HyperParamsGrid []HyperParameters
-	numProcs int
-}
-
 func RunBoruta(data *Dataset, labels []int, numIteration, numFolds int, optimization Optimization) []FeaturesF1 {
 
 	results := make([]FeaturesF1, numFolds)
@@ -39,7 +20,7 @@ func RunBoruta(data *Dataset, labels []int, numIteration, numFolds int, optimiza
 		// Get Inner train & Outer test
 		innerTrain, innerLabel, outerTest, outerLabel := GetFoldData(dataFolds, labelFolds, i)
 
-		// Perform Optimization 
+		// Perform Optimization
 		if optimization.Optimize {
 
 			// 10 fold CV for inner train (HP Optimization)
@@ -70,7 +51,7 @@ func RunBoruta(data *Dataset, labels []int, numIteration, numFolds int, optimiza
 				hyperParams.NTrees = 1000
 			}
 		}
-	
+
 		// Boruta
 		fmt.Println(hyperParams)
 		featureSelected, _ := Boruta(innerTrain, innerLabel, numIteration, hyperParams.NTrees, hyperParams.MaxDepth, hyperParams.LeafSize)
@@ -103,7 +84,6 @@ func RunBoruta(data *Dataset, labels []int, numIteration, numFolds int, optimiza
 
 	return results
 }
-
 
 // Fine on toy dataset
 // d does not contain label

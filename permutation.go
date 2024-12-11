@@ -8,12 +8,6 @@ import (
 	randomforest "github.com/malaschitz/randomForest"
 )
 
-type FeatureAvgMean struct {
-	Feature          string
-	AvgPermutScore   float64
-	ErrorPermutScore float64
-}
-
 func permutation(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) []FeatureAvgMean {
 
 	var featuresToConsider []string

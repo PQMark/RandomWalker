@@ -7,18 +7,7 @@ import (
 	randomforest "github.com/malaschitz/randomForest"
 )
 
-type FeatureStats struct {
-	Features []string
-	AvgF1    float64
-	ErrorF1  float64
-}
-
-type Lr struct {
-	initialThreshold float64
-	decayFactor      float64
-}
-
-// Input: 
+// Input:
 // numFolds: at least 2 folds
 // lrParams: initial threshold and decay factor (default: 0.2 and 1.5)
 // optimization.optimize: true-> optimize for best NTrees, MaxDepth, LeafSize | false-> default hhyper parameters
@@ -74,7 +63,7 @@ func RunRFE(data *Dataset, labels []int, numIteration, numFolds, numFeatures int
 	return results
 }
 
-// Input: 
+// Input:
 // numFeatures: min number of features to return
 // numIterations: train random forest over numIterations for each round of feature elimination
 // Output: list of feature stats (each feature count with associated avgF1 and error)
@@ -200,18 +189,17 @@ func Normalization(data []float64) {
 	}
 }
 
-// Input: 
+// Input:
 // data: feature importances across each feature count for all numIterations
 // threshold: % of features with the lowest FI eliminated, at least 1 feature removed
 func DiscardFeatures(data [][]float64, features *[]string, threshold float64) {
 	length := len(*features)
 
 	if len(data) == 0 || len(data[0]) == 0 || len(*features) == 0 {
-		return 
+		return
 	}
 
 	n := float64(len(data))
-
 
 	size := int(threshold * float64(length))
 	if size < 1 {
@@ -242,7 +230,6 @@ func DiscardFeatures(data [][]float64, features *[]string, threshold float64) {
 				break
 			}
 		}
-
 
 		if count < size && len(*features) > 0 {
 			*features = DeleteFromString((*features)[i], *features)
