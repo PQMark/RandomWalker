@@ -132,6 +132,8 @@ func mRMR_Discrete(dataRaw [][]float64, class []int, binSize, maxFeatures int) (
 	return selectedFeatures, relevanceAll, redundancyMap
 }
 
+// Input: slice of features to select from, indices should not contain duplicate values
+// Output: features slice selected from input feature least at indicated indices
 func getFeatures(Features []string, idx []int) []string {
 
 	len := len(idx)
@@ -184,6 +186,7 @@ func Standardize(dataRaw [][]float64) [][]float64 {
 	return standardizedData
 }
 
+// 
 func Discretization(data [][]float64, binSize int) [][]int {
 	if len(data) == 0 || len(data[0]) == 0 {
 		return nil 
@@ -234,8 +237,16 @@ func Discretization(data [][]float64, binSize int) [][]int {
 
 }
 
+// calculates mutual information between each feature in data and class labels
+// Outputs: returns an slice of MI between each feature column in input data and class labels
 func RelevanceMI(data [][]int, class []int) []float64 {
+	if len(data) != len(class) {
+		panic("Fail to return MI slice: Unequal length of data to class label")
+	}
+
 	n := len(data[0])
+
+
 	MI := make([]float64, n)
 
 	for i := 0; i < n; i++ {
@@ -261,6 +272,7 @@ func RedundancyMIUpdate(data [][]int, featureToConsider []int, target int, redun
 	return redundancyMap
 }
 
+//
 func MutualInfo(data1 []int, data2 []int) float64 {
 
 	HA := ShannonEntropy(data1)
@@ -272,6 +284,8 @@ func MutualInfo(data1 []int, data2 []int) float64 {
 	return mi
 }
 
+// Entropy of X determined by: H(X) = - Σ P(x) * log2(P(x))
+// Output: entropy of input data set
 func ShannonEntropy(sample []int) float64 {
 	n := float64(len(sample))
 	count := make(map[int]int)
@@ -290,6 +304,8 @@ func ShannonEntropy(sample []int) float64 {
 	return -sum 
 }
 
+// joint entropy of X and Y determined by: H(X, Y) = - Σ P(x, y) * log2(P(x, y))
+// Output: joint entropy of 2 input data sets
 func ShannonJointEntropy(data1, data2 []int) float64 {
 	if len(data1) != len(data2) {
 		panic("Fail to calculate joint entropy: Unequal length of data")
@@ -315,7 +331,7 @@ func ShannonJointEntropy(data1, data2 []int) float64 {
 	return -sum
 }
 
-
+// Output: list of data at col index i
 func getCol(data [][]int, i int) []int {
 	col := make([]int, len(data))
 
@@ -326,7 +342,8 @@ func getCol(data [][]int, i int) []int {
 	return col
 }
 
-
+// Input: data and list of indices to select
+// Output: new list of data by selecting input data at idx
 func selectByIndex[T any](data []T, idx []int) []T {
 	var r []T 
 

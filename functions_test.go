@@ -557,6 +557,821 @@ func TestPairwiseDeductionPanic(t *testing.T) {
 	}
 }
 
+
+func TestSelectByIndexFloat(t *testing.T) {
+	tests := []struct {
+		name  string
+		data  []float64
+		index []int
+		want  []float64
+	}{
+		{
+			name:  "Select elements by valid indices",
+			data:  []float64{10.1, 20.2, 30.3, 40.4},
+			index: []int{0, 2},
+			want:  []float64{10.1, 30.3},
+		},
+		{
+			name:  "Select with all indices",
+			data:  []float64{10.1, 20.2, 30.3, 40.4},
+			index: []int{0, 1, 2, 3},
+			want:  []float64{10.1, 20.2, 30.3, 40.4},
+		},
+		{
+			name:  "Select the first element",
+			data:  []float64{10.1, 20.2, 30.3, 40.4},
+			index: []int{0},
+			want:  []float64{10.1},
+		},
+		{
+			name:  "Select the last element",
+			data:  []float64{10.1, 20.2, 30.3, 40.4},
+			index: []int{3},
+			want:  []float64{40.4},
+		},
+		{
+			name:  "Empty data slice",
+			data:  []float64{},
+			index: []int{},
+			want:  []float64{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := selectByIndex(tt.data, tt.index)
+			if !equalFloat64(got, tt.want) {
+				t.Errorf("selectByIndex(%v, %v) = %v, want %v", tt.data, tt.index, got, tt.want)
+			}
+		})
+	}
+}
+
+
+func TestGetCol(t *testing.T) {
+	tests := []struct {
+		name   string
+		data   [][]int
+		colIdx int
+		want   []int
+	}{
+		{
+			name:   "Retrieve first column",
+			data:   [][]int{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}},
+			colIdx: 0,
+			want:   []int{1, 4, 7},
+		},
+		{
+			name:   "Retrieve middle column",
+			data:   [][]int{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}},
+			colIdx: 1,
+			want:   []int{2, 5, 8},
+		},
+		{
+			name:   "Retrieve last column",
+			data:   [][]int{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}},
+			colIdx: 2,
+			want:   []int{3, 6, 9},
+		},
+		{
+			name:   "Single row matrix",
+			data:   [][]int{{10, 20, 30}},
+			colIdx: 1,
+			want:   []int{20},
+		},
+		{
+			name:   "Single column matrix",
+			data:   [][]int{{100}, {200}, {300}},
+			colIdx: 0,
+			want:   []int{100, 200, 300},
+		},
+		{
+			name:   "Empty matrix",
+			data:   [][]int{},
+			colIdx: 1,
+			want:   []int{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getCol(tt.data, tt.colIdx)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("getCol(%v, %d) = %v, want %v", tt.data, tt.colIdx, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetColPanic(t *testing.T) {
+	tests := []struct {
+		name   string
+		data   [][]int
+		colIdx int
+	}{
+		{
+			name:   "Index out of bounds (negative index)",
+			data:   [][]int{{1, 2}, {3, 4}, {5, 6}},
+			colIdx: -1,
+		},
+		{
+			name:   "Index out of bounds (column index too large)",
+			data:   [][]int{{1, 2}, {3, 4}, {5, 6}},
+			colIdx: 3,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r == nil {
+					t.Errorf("Expected panic for input %v and column index %d", tt.data, tt.colIdx)
+				}
+			}()
+			_ = getCol(tt.data, tt.colIdx)
+		})
+	}
+}
+
+
+func TestShannonJointEntropy(t *testing.T) {
+	tests := []struct {
+		name  string
+		data1 []int
+		data2 []int
+		want  float64
+	}{
+		{
+			name:  "Simple test",
+			data1: []int{0, 1},
+			data2: []int{0, 1},
+			want:  math.Log2(2),
+		},
+		{
+			name:  "Two identical datasets",
+			data1: []int{1, 1, 1, 1},
+			data2: []int{1, 1, 1, 1},
+			want:  0.0,
+		},
+		{
+			name:  "Uniform distribution",
+			data1: []int{0, 0, 1, 1},
+			data2: []int{0, 1, 0, 1},
+			want:  2.0,
+		},
+		{
+			name:  "Different lengths",
+			data1: []int{1, 2, 3},
+			data2: []int{1, 2},
+			want:  0.0, // This will never be checked because of the panic
+		},
+		{
+			name:  "Single data point",
+			data1: []int{5},
+			data2: []int{10},
+			want:  0.0,
+		},
+		{
+			name:  "Empty data",
+			data1: []int{},
+			data2: []int{},
+			want:  0.0,
+		},
+		{
+			name:  "Mixed distribution with decimals",
+			data1: []int{0, 1, 0, 1, 0, 1},
+			data2: []int{0, 0, 1, 1, 1, 1},
+			want:  1.9183,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.name == "Different lengths" {
+				func() {
+					defer func() {
+						if r := recover(); r == nil {
+							t.Errorf("Expected panic for input %v and %v", tt.data1, tt.data2)
+						}
+					}()
+					_ = ShannonJointEntropy(tt.data1, tt.data2)
+				}()
+			} else {
+				got := ShannonJointEntropy(tt.data1, tt.data2)
+				if math.Abs(got-tt.want) > 1e-5 {
+					t.Errorf("ShannonJointEntropy(%v, %v) = %v, want %v", tt.data1, tt.data2, got, tt.want)
+				}
+			}
+		})
+	}
+}
+
+func TestShannonEntropy(t *testing.T) {
+	tests := []struct {
+		name   string
+		sample []int
+		want   float64
+	}{
+		{
+			name:   "Single element",
+			sample: []int{5},
+			want:   0.0,
+		},
+		{
+			name:   "Two different elements",
+			sample: []int{0, 1},
+			want:   1.0,
+		},
+		{
+			name:   "Uniform distribution",
+			sample: []int{0, 1, 0, 1},
+			want:   1.0,
+		},
+		{
+			name:   "Non-uniform distribution",
+			sample: []int{0, 0, 0, 1, 1, 2},
+			want:   1.459148,
+		},
+		{
+			name:   "All elements the same",
+			sample: []int{1, 1, 1, 1},
+			want:   0.0,
+		},
+		{
+			name:   "Empty slice",
+			sample: []int{},
+			want:   0.0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ShannonEntropy(tt.sample)
+			if math.Abs(got-tt.want) > 1e-5 {
+				t.Errorf("ShannonEntropy(%v) = %v, want %v", tt.sample, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMutualInfo(t *testing.T) {
+	tests := []struct {
+		name  string
+		data1 []int
+		data2 []int
+		want  float64
+	}{
+		{
+			name:  "identical",
+			data1: []int{1, 2, 1, 2},
+			data2: []int{1, 2, 1, 2},
+			want:  ShannonEntropy([]int{1, 2}),
+		},
+		{
+			name:  "different",
+			data1: []int{1, 1, 2, 2},
+			data2: []int{3, 3, 4, 4},
+			want: 1.0,
+		},
+		{
+			name:  "Mixed",
+			data1: []int{0, 0, 1, 1, 1, 2},
+			data2: []int{0, 1, 0, 1, 1, 2},
+			want:  0.666666,
+		},
+		{
+			name:  "Empty data",
+			data1: []int{},
+			data2: []int{},
+			want:  0.0,
+		},
+		{
+			name:  "Single data point",
+			data1: []int{1},
+			data2: []int{1},
+			want:  0.0,
+		},
+		{
+			name:  "Different lengths",
+			data1: []int{1, 2, 3},
+			data2: []int{1, 2},
+			want:  0.0, // panic
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.name == "Different lengths" {
+				func() {
+					defer func() {
+						if r := recover(); r == nil {
+							t.Errorf("Expected panic for input %v and %v", tt.data1, tt.data2)
+						}
+					}()
+					_ = MutualInfo(tt.data1, tt.data2)
+				}()
+			} else {
+				got := MutualInfo(tt.data1, tt.data2)
+				if math.Abs(got-tt.want) > 1e-5 {
+					t.Errorf("MutualInfo(%v, %v) = %v, want %v", tt.data1, tt.data2, got, tt.want)
+				}
+			}
+		})
+	}
+}
+
+func TestRedundancyMIUpdate(t *testing.T) {
+	tests := []struct {
+		name             string
+		data             [][]int
+		featureToConsider []int
+		target           int
+		initialMap       map[[2]int]float64
+		expectedMap      map[[2]int]float64
+	}{
+		{
+			name: "Simple case",
+			data: [][]int{
+				{1, 2, 3},
+				{4, 5, 6},
+				{7, 8, 9},
+			},
+			featureToConsider: []int{0, 1},
+			target:          2,
+			initialMap:     map[[2]int]float64{},
+			expectedMap:    map[[2]int]float64{
+				{2, 0}: MutualInfo([]int{1, 4, 7}, []int{3, 6, 9}),
+				{2, 1}: MutualInfo([]int{2, 5, 8}, []int{3, 6, 9}),
+			},
+		},
+		{
+			name: "Already existing map entries",
+			data: [][]int{
+				{1, 2, 3},
+				{4, 5, 6},
+				{7, 8, 9},
+			},
+			featureToConsider: []int{0, 1},
+			target:          2,
+			initialMap:     map[[2]int]float64{
+				{2, 0}: 0.5,
+				{2, 1}: 0.5,
+			},
+			expectedMap:    map[[2]int]float64{
+				{2, 0}: MutualInfo([]int{1, 4, 7}, []int{3, 6, 9}),
+				{2, 1}: MutualInfo([]int{2, 5, 8}, []int{3, 6, 9}),
+			},
+		},
+		{
+			name: "Empty data",
+			data: [][]int{},
+			featureToConsider: []int{0, 1},
+			target:          0,
+			initialMap:     map[[2]int]float64{},
+			expectedMap:    map[[2]int]float64{
+				{0, 0}: 0,
+				{0, 1}: 0,
+			},
+		},
+		{
+			name: "Single row data",
+			data: [][]int{
+				{1, 2, 3},
+			},
+			featureToConsider: []int{0, 1},
+			target:          2,
+			initialMap:     map[[2]int]float64{},
+			expectedMap:    map[[2]int]float64{
+				{2, 0}: MutualInfo([]int{1}, []int{3}),
+				{2, 1}: MutualInfo([]int{2}, []int{3}),
+			},
+		},
+		{
+			name: "different target index",
+			data: [][]int{
+				{1, 2, 3},
+			},
+			featureToConsider: []int{0, 1},
+			target:          0,
+			initialMap:     map[[2]int]float64{},
+			expectedMap:    map[[2]int]float64{
+				{0, 0}: MutualInfo([]int{1}, []int{0}),
+				{0, 1}: MutualInfo([]int{2}, []int{0}),
+			},
+		},
+		{
+			name: "longer list",
+			data: [][]int{
+				{1, 2, 3, 4, 5},
+				{4, 5, 6, 7, 8},
+				{7, 8, 9, 7, 6},
+			},
+			featureToConsider: []int{1, 3},
+			target:          2,
+			initialMap:     map[[2]int]float64{},
+			expectedMap:    map[[2]int]float64{
+				{2, 1}: MutualInfo([]int{2, 5, 8}, []int{3, 6, 9}),
+				{2, 3}: MutualInfo([]int{4, 7, 7}, []int{3, 6, 9}),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := RedundancyMIUpdate(tt.data, tt.featureToConsider, tt.target, tt.initialMap)
+			if !reflect.DeepEqual(got, tt.expectedMap) {
+				t.Errorf("RedundancyMIUpdate(%v, %v, %d, %v) = %v, want %v", tt.data, tt.featureToConsider, tt.target, tt.initialMap, got, tt.expectedMap)
+			}
+		})
+	}
+}
+
+func TestRelevanceMI(t *testing.T) {
+	tests := []struct {
+		name         string
+		data         [][]int
+		class        []int
+		want         []float64
+		expectPanic  bool
+	}{
+		{
+			name: "Simple case",
+			data: [][]int{
+				{1, 2, 3},
+				{4, 5, 6},
+				{7, 8, 9},
+			},
+			class: []int{1, 0, 1},
+			want: []float64{
+				MutualInfo([]int{1, 4, 7}, []int{1, 0, 1}),
+				MutualInfo([]int{2, 5, 8}, []int{1, 0, 1}),
+				MutualInfo([]int{3, 6, 9}, []int{1, 0, 1}),
+			},
+			expectPanic: false,
+		},
+		{
+			name: "Single feature",
+			data: [][]int{
+				{1},
+				{2},
+				{3},
+			},
+			class: []int{1, 0, 1},
+			want: []float64{
+				MutualInfo([]int{1, 2, 3}, []int{1, 0, 1}),
+			},
+			expectPanic: false,
+		},
+		{
+			name: "Uniform class",
+			data: [][]int{
+				{1, 2, 3},
+				{1, 2, 3},
+				{1, 2, 3},
+			},
+			class: []int{1, 1, 1},
+			want: []float64{
+				MutualInfo([]int{1, 1, 1}, []int{1, 1, 1}),
+				MutualInfo([]int{2, 2, 2}, []int{1, 1, 1}),
+				MutualInfo([]int{3, 3, 3}, []int{1, 1, 1}),
+			},
+			expectPanic: false,
+		},
+		{
+			name: "Single row data",
+			data: [][]int{
+				{1, 2, 3},
+			},
+			class: []int{1},
+			want: []float64{
+				MutualInfo([]int{1}, []int{1}),
+				MutualInfo([]int{2}, []int{1}),
+				MutualInfo([]int{3}, []int{1}),
+			},
+			expectPanic: false,
+		},
+		{
+			name: "different case",
+			data: [][]int{
+				{1, 2, 3},
+				{4, 5, 6},
+			},
+			class: []int{1, 0},
+			want: []float64{
+				MutualInfo([]int{1, 4}, []int{1, 0}),
+				MutualInfo([]int{2, 5}, []int{1, 0}),
+				MutualInfo([]int{3, 6}, []int{1, 0}),
+			},
+			expectPanic: false,
+		},
+		{
+			name: "Unequal lengths data larger than class",
+			data: [][]int{
+				{1, 2, 3},
+				{4, 5, 6},
+				{7, 8, 9},
+			},
+			class: []int{1, 0},
+			want: []float64{},
+			expectPanic: true,
+		},
+		{
+			name: "Unequal lengths class larger than data",
+			data: [][]int{
+				{1, 2, 3},
+			},
+			class: []int{1, 0, 1},
+			want: []float64{},
+			expectPanic: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.expectPanic {
+				defer func() {
+					if r := recover(); r == nil {
+						t.Errorf("Expected panic for input %v and %v", tt.data, tt.class)
+					}
+				}()
+			}
+
+			got := RelevanceMI(tt.data, tt.class)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("RelevanceMI(%v, %v) = %v, want %v", tt.data, tt.class, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDiscretization(t *testing.T) {
+	tests := []struct {
+		name    string
+		data    [][]float64
+		binSize int
+		want    [][]int
+	}{
+		{
+			name: "Simple case",
+			data: [][]float64{
+				{1.0, 2.0, 3.0},
+				{4.0, 5.0, 6.0},
+				{7.0, 8.0, 9.0},
+			},
+			binSize: 3,
+			want: [][]int{
+				{0, 0, 0},
+				{1, 1, 1},
+				{2, 2, 2},
+			},
+		},
+		{
+			name: "Single bin",
+			data: [][]float64{
+				{1.0, 2.0, 3.0},
+				{4.0, 5.0, 6.0},
+				{7.0, 8.0, 9.0},
+			},
+			binSize: 1,
+			want: [][]int{
+				{0, 0, 0},
+				{0, 0, 0},
+				{0, 0, 0},
+			},
+		},
+		{
+			name: "Uniform distribution",
+			data: [][]float64{
+				{0.0, 0.5, 1.0},
+				{1.0, 1.5, 2.0},
+				{2.0, 2.5, 3.0},
+				{3.0, 3.5, 4.0},
+			},
+			binSize: 4,
+			want: [][]int{
+				{0, 0, 0},
+				{1, 1, 1},
+				{2, 2, 2},
+				{3, 3, 3},
+			},
+		},
+		{
+			name: "Different ranges",
+			data: [][]float64{
+				{1.0, 20.0, 300.0},
+				{4.0, 50.0, 600.0},
+				{7.0, 80.0, 900.0},
+			},
+			binSize: 3,
+			want: [][]int{
+				{0, 0, 0},
+				{1, 1, 1},
+				{2, 2, 2},
+			},
+		},
+		{
+			name: "Edge binning",
+			data: [][]float64{
+				{0.0, 2.0, 4.0},
+				{1.0, 3.0, 5.0},
+				{2.0, 4.0, 6.0},
+				{3.0, 5.0, 7.0},
+			},
+			binSize: 2,
+			want: [][]int{
+				{0, 0, 0},
+				{0, 0, 0},
+				{1, 1, 1},
+				{1, 1, 1},
+			},
+		},
+		{
+			name: "Empty data",
+			data: [][]float64{},
+			binSize: 4,
+			want: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Discretization(tt.data, tt.binSize)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Discretization(%v, %d) = %v, want %v", tt.data, tt.binSize, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetFeatures_Scenarios(t *testing.T) {
+	type testCase struct {
+		name     string
+		features []string
+		idx      []int
+		expected []string
+		shouldPanic bool
+	}
+
+	testCases := []testCase{
+		{
+			name:     "extract 1 and 3",
+			features: []string{"A", "B", "C", "D", "E"},
+			idx:      []int{1, 3},
+			expected: []string{"B", "D"},
+			shouldPanic: false,
+		},
+		{
+			name:     "Empty Lists",
+			features: []string{},
+			idx:      []int{},
+			expected: []string{},
+			shouldPanic: false,
+		},
+		{
+			name:     "Out of Bound Indices",
+			features: []string{"A", "B", "C"},
+			idx:      []int{1, 3},
+			expected: nil,
+			shouldPanic: true,
+		},
+		{
+			name:     "Unordered Indices",
+			features: []string{"A", "B", "C", "D", "E"},
+			idx:      []int{4, 2, 0},
+			expected: []string{"E", "C", "A"},
+			shouldPanic: false,
+		},
+		{
+			name:     "Single Element Indices",
+			features: []string{"A", "B", "C"},
+			idx:      []int{1},
+			expected: []string{"B"},
+			shouldPanic: false,
+		},
+		{
+			name:     "Non-Sequential Indices",
+			features: []string{"A", "B", "C", "D", "E"},
+			idx:      []int{4, 0, 3},
+			expected: []string{"E", "A", "D"},
+			shouldPanic: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r != nil && !tc.shouldPanic {
+					t.Errorf("Test %v: Unexpected panic occurred: %v", tc.name, r)
+				} else if r == nil && tc.shouldPanic {
+					t.Errorf("Test %v: Expected panic did not occur", tc.name)
+				}
+			}()
+			
+			result := getFeatures(tc.features, tc.idx)
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("Test %v: Expected %v, got %v", tc.name, tc.expected, result)
+			}
+		})
+	}
+}
+
+func TestDeleteFromString(t *testing.T) {
+	type testCase struct {
+		name          string
+		featureToDelete string
+		features      []string
+		expected      []string
+		shouldPanic   bool
+	}
+
+	testCases := []testCase{
+		{
+			name:          "works",
+			featureToDelete: "C",
+			features:      []string{"A", "B", "C", "D", "E"},
+			expected:      []string{"A", "B", "D", "E"},
+			shouldPanic:   false,
+		},
+		{
+			name:          "Feature Not Found",
+			featureToDelete: "X",
+			features:      []string{"A", "B", "C"},
+			expected:      nil,
+			shouldPanic:   true,
+		},
+		{
+			name:          "Deleting from Empty Slice",
+			featureToDelete: "A",
+			features:      []string{},
+			expected:      nil,
+			shouldPanic:   true,
+		},
+		{
+			name:          "Deleting from Single Element Slice",
+			featureToDelete: "A",
+			features:      []string{"A"},
+			expected:      []string{},
+			shouldPanic:   false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r != nil && !tc.shouldPanic {
+					t.Errorf("Test %v: Unexpected panic occurred: %v", tc.name, r)
+				} else if r == nil && tc.shouldPanic {
+					t.Errorf("Test %v: Expected panic did not occur", tc.name)
+				}
+			}()
+			
+			result := DeleteFromString(tc.featureToDelete, tc.features)
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("Test %v: Expected %v, got %v", tc.name, tc.expected, result)
+			}
+		})
+	}
+}
+
+func TestCalculateThreshold(t *testing.T) {
+	type testCase struct {
+		num      int
+		expected int
+	}
+
+	testCases := []testCase{
+		{
+			num:      0,
+			expected: 0,
+		},
+		{
+			num:      10,
+			expected: 8, //from binomial calc
+		},
+		{
+			num:      20,
+			expected: 14, //from binomial calc
+		},
+		{
+			num:      5,
+			expected: 4,  //from binomial calc
+		},
+		{
+			num:      50,
+			expected: 31, //from binomial calc
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run("CalculateThreshold", func(t *testing.T) {
+			result := CalculateThreshold(tc.num)
+			if result != tc.expected {
+				t.Errorf("For num = %d, expected %d but got %d", tc.num, tc.expected, result)
+			}
+		})
+	}
+}
+
 // Helper function to compare slices of float64 with a small epsilon for floating point precision
 func equalFloat64(a, b []float64) bool {
     if len(a) != len(b) {

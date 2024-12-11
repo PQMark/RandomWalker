@@ -375,7 +375,8 @@ func DeepCopy(d *Dataset, features []string) *Dataset {
 	return copyDataset
 }
 
-// fine
+// Input: input string to delete from features slice, f only appears once in features slice
+// Output: returns string array with f deleted
 func DeleteFromString(f string, features []string) []string {
 	// Find the index of f
 	index := -1
