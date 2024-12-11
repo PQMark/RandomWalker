@@ -106,7 +106,19 @@ func TestDiscardFeatures(t *testing.T) {
         threshold      float64
         expectedFeatures []string
     }{
-        // Case 1: All features are discarded (threshold is high)
+		// Case 1: Deleting multiple features when the threshold is high
+        {
+            data: [][]float64{
+                {1.0, 2.0, 3.0, 4.0},
+                {4.0, 5.0, 6.0, 7.0},
+                {7.0, 8.0, 9.0, 9.5},
+            },
+            features:       &[]string{"feature1", "feature2", "feature3", "feature4"},
+            threshold:      0.5, // Threshold is high, likely discarding features
+            expectedFeatures: []string{"feature3", "feature4"}, // Retained features are expected based on their importance
+        },
+
+        // Case 2: High threshold resulting in the deletion of most features
         {
             data: [][]float64{
                 {1.0, 2.0, 3.0},
@@ -114,10 +126,11 @@ func TestDiscardFeatures(t *testing.T) {
                 {7.0, 8.0, 9.0},
             },
             features:       &[]string{"feature1", "feature2", "feature3"},
-            threshold:      0.9, // Threshold is very high, no features will meet the criteria
-            expectedFeatures: []string{}, // Expecting all features to be discarded
+            threshold:      0.9, // High threshold, expect to retain only the most important feature
+            expectedFeatures: []string{"feature3"}, // Only one feature retained
         },
-        // Case 2: All features are retained (threshold is very low)
+
+        // Case 3: Low threshold resulting in retaining most features
         {
             data: [][]float64{
                 {1.0, 2.0, 3.0},
@@ -125,10 +138,11 @@ func TestDiscardFeatures(t *testing.T) {
                 {7.0, 8.0, 9.0},
             },
             features:       &[]string{"feature1", "feature2", "feature3"},
-            threshold:      0.01, // Threshold is very low, all features will be retained
-            expectedFeatures: []string{"feature1", "feature2", "feature3"}, // Expecting all features to be retained
+            threshold:      0.01, // Very low threshold, expect all features to be retained
+            expectedFeatures: []string{"feature2", "feature3"}, // at least one feature removed
         },
-        // Case 3: Threshold exactly at the point of decision
+
+        // Case 4: Threshold is exactly at the point of decision
         {
             data: [][]float64{
                 {1.0, 2.0, 3.0},
@@ -136,19 +150,21 @@ func TestDiscardFeatures(t *testing.T) {
                 {7.0, 8.0, 9.0},
             },
             features:       &[]string{"feature1", "feature2", "feature3"},
-            threshold:      0.33, // Threshold is set so that only features above this percentage are retained
-            expectedFeatures: []string{"feature2", "feature3"}, // Features retained based on sum comparison
+            threshold:      0.33, // Features that are above this threshold should be retained
+            expectedFeatures: []string{"feature2", "feature3"}, // Features based on threshold comparison
         },
-        // Case 4: Single row of data (only one data point)
+
+        // Case 5: Single data point (row), apply threshold to one feature
         {
             data: [][]float64{
                 {1.0, 2.0, 3.0},
             },
             features:       &[]string{"feature1", "feature2", "feature3"},
-            threshold:      0.5, // Threshold applied to only one data point
-            expectedFeatures: []string{"feature2", "feature3"}, // Based on sum comparison for a single row
+            threshold:      0.5, // Only one feature with a threshold applied
+            expectedFeatures: []string{"feature2", "feature3"}, // Expected features after threshold application
         },
-        // Case 5: Single feature (only one feature in the list)
+
+        // Case 6: Single feature (only one feature in the list)
         {
             data: [][]float64{
                 {1.0},
@@ -156,25 +172,27 @@ func TestDiscardFeatures(t *testing.T) {
                 {3.0},
             },
             features:       &[]string{"feature1"},
-            threshold:      0.5, // Threshold applied to only one feature
-            expectedFeatures: []string{"feature1"}, // Only one feature, should be retained
+            threshold:      0.5, // Threshold applied to a single feature
+            expectedFeatures: []string{}, // No feature retained as it is deleted
         },
-        // Case 6: Empty dataset
+
+        // Case 7: Empty dataset (no data points)
         {
             data: [][]float64{}, // No data points
             features:       &[]string{"feature1", "feature2", "feature3"},
             threshold:      0.5, // Threshold applied to an empty dataset
-            expectedFeatures: []string{"feature1", "feature2", "feature3"}, // All features should remain intact since there is no data to process
+            expectedFeatures: []string{"feature1", "feature2", "feature3"}, // No features discarded
         },
-        // Case 7: Empty features list
+
+        // Case 8: Empty features list (no features to discard)
         {
             data: [][]float64{
                 {1.0, 2.0, 3.0},
                 {4.0, 5.0, 6.0},
             },
-            features:       &[]string{}, // No features to discard
+            features:       &[]string{}, // No features
             threshold:      0.5, // Threshold applied with no features
-            expectedFeatures: []string{}, // Expecting no features to be present
+            expectedFeatures: []string{}, // No features to retain or discard
         },
     }
 
@@ -192,6 +210,88 @@ func TestDiscardFeatures(t *testing.T) {
     }
 }
 
+func TestNormalization(t *testing.T) {
+    tests := []struct {
+        data            []float64
+        expectedData    []float64
+    }{
+        // Case 1: Normal case with positive numbers
+        {
+            data: []float64{1.0, 2.0, 3.0, 4.0},
+            expectedData: []float64{0.1, 0.2, 0.3, 0.4}, // Normalized values, each value divided by 10
+        },
+
+        // Case 2: Normal case with decimal values
+        {
+            data: []float64{0.1, 0.2, 0.3},
+            expectedData: []float64{0.1 / 0.6, 0.2 / 0.6, 0.3 / 0.6}, // Sum is 0.6
+        },
+
+        // Case 3: All elements are zero
+        {
+            data: []float64{0.0, 0.0, 0.0},
+            expectedData: []float64{0.0, 0.0, 0.0}, // Sum is 0, and dividing by 0 should leave all elements as 0
+        },
+
+        // Case 4: Single element
+        {
+            data: []float64{10.0},
+            expectedData: []float64{1.0}, // Only one element, and it becomes 1 after division by itself
+        },
+
+        // Case 5: Large numbers
+        {
+            data: []float64{1000.0, 2000.0, 3000.0},
+            expectedData: []float64{0.1667, 0.3333, 0.5}, // Sum is 6000, and values divided by 6000
+        },
+
+        // Case 6: Negative numbers
+        {
+            data: []float64{-1.0, -2.0, -3.0},
+            expectedData: []float64{0.1667, 0.3333, 0.5}, // Sum is -6, and values divided by -6
+        },
+
+        // Case 7: Empty array
+        {
+            data: []float64{},
+            expectedData: []float64{}, // No elements to normalize
+        },
+
+        // Case 8: All elements are the same
+        {
+            data: []float64{5.0, 5.0, 5.0},
+            expectedData: []float64{1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0}, // Sum is 15, each element divided by 15
+        },
+    }
+
+    for i, test := range tests {
+        // Run the Normalization function
+        Normalization(test.data)
+
+        // Check if the resulting data matches the expected
+        if !equalFloat64(test.data, test.expectedData) {
+            fmt.Printf("Test %d did not pass!\n", i+1)
+            t.Errorf("Test %d Failed: expected %v, got %v", i+1, test.expectedData, test.data)
+        } else {
+            fmt.Printf("Test %d Passed!\n", i+1)
+        }
+    }
+}
+
+// Helper function to compare slices of float64 with a small epsilon for floating point precision
+func equalFloat64(a, b []float64) bool {
+    if len(a) != len(b) {
+        return false
+    }
+    for i := range a {
+        if math.Abs(a[i]-b[i]) > 1e-3 { // small epsilon tolerance for floating-point comparison
+            return false
+        }
+    }
+    return true
+}
+
+
 
 // Helper function to compare two slices of strings
 func equal(a, b *[]string) bool {
@@ -206,98 +306,3 @@ func equal(a, b *[]string) bool {
     return true
 }
 
-
-
-// func DiscardFeatures(data [][]float64, features *[]string, threshold float64) {
-// 	length := len(*features)
-// 	n := float64(len(data))
-
-// 	size := int(threshold * float64(length))
-// 	if size < 1 {
-// 		size = 1
-// 	}
-
-// 	importanceMean := make([]float64, length)
-
-// 	for c := range data[0] {
-// 		sum := 0.0
-// 		for r := range data {
-// 			sum += data[r][c]
-// 		}
-
-// 		importanceMean[c] = sum / n
-// 	}
-
-// 	for i := length - 1; i >= 0; i-- {
-// 		val1 := importanceMean[i]
-// 		count := 0
-
-// 		for _, val2 := range importanceMean {
-// 			if val1 > val2 {
-// 				count++
-// 			}
-
-// 			if count >= size {
-// 				break
-// 			}
-// 		}
-
-// 		if count < size {
-// 			*features = DeleteFromString((*features)[i], *features)
-// 		}
-
-// 		if len(*features) <= length-size {
-// 			break
-// 		}
-
-// 	}
-
-// }
-
-// func DeleteFromString(f string, features []string) []string {
-// 	// Find the index of f
-// 	index := -1
-// 	for i, feature := range features {
-// 		if feature == f {
-// 			index = i
-// 			break
-// 		}
-// 	}
-
-// 	// Panic if f is not found
-// 	if index == -1 {
-// 		panic(fmt.Sprintf("Cannot delete '%s' since it is not found", f))
-// 	} else {
-// 		features = append(features[:index], features[index+1:]...)
-// 	}
-
-// 	return features
-// }
-
-// func FeatureDecayScheduler(features *[]string, numTotalFeatures int, lrParams Lr) float64 {
-// 	// default initial threshold and decay factor
-// 	if lrParams.initialThreshold == 0.0 {
-// 		lrParams.initialThreshold = 0.2
-// 	}
-
-// 	if lrParams.decayFactor == 0.0 {
-// 		lrParams.decayFactor = 1.5
-// 	}
-
-// 	var threshold float64
-// 	remainFeatures := len(*features)
-
-// 	//fmt.Println(numTotalFeatures)
-// 	remainingPercent := float64(remainFeatures)/float64(numTotalFeatures)
-// 	if remainingPercent <= 0.20 {
-// 		threshold = 0.03
-// 		fmt.Println("t: ", threshold)
-
-// 	} else {
-// 		// fmt.Println(initialThreshold)
-// 		// fmt.Println(decayFactor)
-// 		threshold = float64(lrParams.initialThreshold) * math.Pow(remainingPercent, lrParams.decayFactor)
-// 		fmt.Println("t: ", threshold)
-// 	}
-// 	return threshold
-// }
