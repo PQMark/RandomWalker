@@ -4,6 +4,7 @@ import (
 	//"bufio"
 	"fmt"
 	"math"
+	"reflect"
 	//"os"
 	// "strconv"
 	// "strings"
@@ -278,6 +279,284 @@ func TestNormalization(t *testing.T) {
     }
 }
 
+
+func TestCheckIfAllNegative(t *testing.T) {
+	tests := []struct {
+		name string
+		data []float64
+		want bool
+	}{
+		{
+			name: "All negative values",
+			data: []float64{-1.0, -2.0, -3.0},
+			want: true,
+		},
+		{
+			name: "All values are zero",
+			data: []float64{0.0, 0.0, 0.0},
+			want: true,
+		},
+		{
+			name: "All positive values",
+			data: []float64{1.0, 2.0, 3.0},
+			want: false,
+		},
+		{
+			name: "Some positive and some negative values",
+			data: []float64{-1.0, 2.0, -3.0},
+			want: false,
+		},
+		{
+			name: "Empty data",
+			data: []float64{},
+			want: true,
+		},
+		{
+			name: "Positive and zero values",
+			data: []float64{0.0, 1.0, -2.0},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := CheckIfAllNegative(tt.data)
+			if got != tt.want {
+				t.Errorf("CheckIfAllNegative(%v) = %v, want %v", tt.data, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetMaxIndexInt(t *testing.T) {
+	tests := []struct {
+		name string
+		data []int
+		want int
+	}{
+		{
+			name: "Positive integers",
+			data: []int{4, 1, 7, 2, 5},
+			want: 2,
+		},
+		{
+			name: "Negative integers",
+			data: []int{-4, -1, -7, -2, -5},
+			want: 1,
+		},
+		{
+			name: "Mixed positive and negative integers",
+			data: []int{-4, 1, -7, 2, 5},
+			want: 4,
+		},
+		{
+			name: "All elements are the same",
+			data: []int{3, 3, 3, 3, 3},
+			want: 0,
+		},
+		{
+			name: "Single element",
+			data: []int{42},
+			want: 0,
+		},
+		{
+			name: "Empty list",
+			data: []int{},
+			want: -1,
+		},
+		{
+			name: "Large numbers",
+			data: []int{1000000000, 999999999, 987654321, 1000000001},
+			want: 3,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getMaxIndex(tt.data)
+			if got != tt.want {
+				t.Errorf("getMaxIndex(%v) = %d, want %d", tt.data, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetMaxIndexFloat(t *testing.T) {
+	tests := []struct {
+		name string
+		data []float64
+		want int
+	}{
+		{
+			name: "Positive floats",
+			data: []float64{4.5, 1.1, 7.7, 2.2, 5.5},
+			want: 2,
+		},
+		{
+			name: "Negative floats",
+			data: []float64{-4.5, -1.1, -7.7, -2.2, -5.5},
+			want: 1,
+		},
+		{
+			name: "Mixed positive and negative floats",
+			data: []float64{-4.5, 1.1, -7.7, 2.2, 5.5},
+			want: 4,
+		},
+		{
+			name: "All elements are the same",
+			data: []float64{3.3, 3.3, 3.3, 3.3, 3.3},
+			want: 0,
+		},
+		{
+			name: "Single element",
+			data: []float64{42.42},
+			want: 0,
+		},
+		{
+			name: "Empty list",
+			data: []float64{},
+			want: -1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getMaxIndex(tt.data)
+			if got != tt.want {
+				t.Errorf("getMaxIndex(%v) = %d, want %d", tt.data, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDelete(t *testing.T) {
+	tests := []struct {
+		name string
+		data []float64
+		idx  int
+		want []float64
+	}{
+		{
+			name: "Delete middle element",
+			data: []float64{1.1, 2.2, 3.3, 4.4},
+			idx:  2,
+			want: []float64{1.1, 2.2, 4.4},
+		},
+		{
+			name: "Delete first element",
+			data: []float64{5.5, 6.6, 7.7, 8.8},
+			idx:  0,
+			want: []float64{6.6, 7.7, 8.8},
+		},
+		{
+			name: "Delete last element",
+			data: []float64{10.0, 20.0, 30.0, 40.0},
+			idx:  3,
+			want: []float64{10.0, 20.0, 30.0},
+		},
+		{
+			name: "Index out of bounds",
+			data: []float64{100.0, 200.0, 300.0},
+			idx:  -1,
+			want: []float64{100.0, 200.0, 300.0},
+		},
+		{
+			name: "Index out of bounds",
+			data: []float64{100.0, 200.0, 300.0},
+			idx:  4,
+			want: []float64{100.0, 200.0, 300.0},
+		},
+		{
+			name: "Empty slice",
+			data: []float64{},
+			idx:  0,
+			want: []float64{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Delete(tt.data, tt.idx)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Delete(%v, %d) = %v, want %v", tt.data, tt.idx, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPairwiseDeductionFloat(t *testing.T) {
+	tests := []struct {
+		name  string
+		data1 []float64
+		data2 []float64
+		want  []float64
+	}{
+		{
+			name:  "Equal length positive floats",
+			data1: []float64{10.5, 20.5, 30.5, 40.5},
+			data2: []float64{1.5, 2.5, 3.5, 4.5},
+			want:  []float64{9.0, 18.0, 27.0, 36.0},
+		},
+		{
+			name:  "Equal length mixed floats",
+			data1: []float64{5.5, -2.5, 7.0, -3.5},
+			data2: []float64{3.0, 1.5, -5.5, -2.5},
+			want:  []float64{2.5, -4.0, 12.5, -1.0},
+		},
+		{
+			name:  "Empty slices",
+			data1: []float64{},
+			data2: []float64{},
+			want:  []float64{},
+		},
+		{
+			name:  "Single element slices",
+			data1: []float64{42.42},
+			data2: []float64{24.24},
+			want:  []float64{18.18},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := PairwiseDeduction(tt.data1, tt.data2)
+			if !equalFloat64(got, tt.want) {
+				t.Errorf("PairwiseDeduction(%v, %v) = %v, want %v", tt.data1, tt.data2, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPairwiseDeductionPanic(t *testing.T) {
+	tests := []struct {
+		name  string
+		data1 []int
+		data2 []int
+	}{
+		{
+			name:  "Unequal length slices",
+			data1: []int{10, 20, 30},
+			data2: []int{1, 2},
+		},
+		{
+			name:  "One slice empty",
+			data1: []int{1, 2, 3},
+			data2: []int{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r == nil {
+					t.Errorf("Expected panic for input %v and %v", tt.data1, tt.data2)
+				}
+			}()
+			_ = PairwiseDeduction(tt.data1, tt.data2)
+		})
+	}
+}
+
 // Helper function to compare slices of float64 with a small epsilon for floating point precision
 func equalFloat64(a, b []float64) bool {
     if len(a) != len(b) {
@@ -291,8 +570,6 @@ func equalFloat64(a, b []float64) bool {
     return true
 }
 
-
-
 // Helper function to compare two slices of strings
 func equal(a, b *[]string) bool {
     if len(*a) != len(*b) {
@@ -305,4 +582,5 @@ func equal(a, b *[]string) bool {
     }
     return true
 }
+
 

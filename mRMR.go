@@ -341,6 +341,8 @@ func selectByIndex[T any](data []T, idx []int) []T {
 	return r
 }
 
+// element-wise substraction between 2 slices of data
+// Output: new slice of data containing result of pairwise substraction
 func PairwiseDeduction[T Numeric](data1, data2 []T) []T {
 	if len(data1) != len(data2) {
 		panic("Fail to perform pairwise sum: Unequal length of data")
@@ -356,9 +358,14 @@ func PairwiseDeduction[T Numeric](data1, data2 []T) []T {
 	return r 
 }
 
-// return the index of the maximum value in a list 
+// return the index of the maximum value in a list, -1 if data list is empty
 func getMaxIndex[T Numeric] (data []T) int {
+	if (len(data)) == 0 {
+		return -1
+	}
+
 	a := data[0]
+
 	idx := 0 
 
 	for i, val := range data {
@@ -371,13 +378,18 @@ func getMaxIndex[T Numeric] (data []T) int {
 	return idx
 }
 
-
+// remove data at index idx
 func Delete[T any] (data []T, idx int) []T {
+	if len(data) == 0 || idx < 0 || idx >= len(data) {
+		return data 
+	}
+
 	data = append(data[:idx], data[idx+1:]...)
 
 	return data
 }
 
+// return true if all all data are negative
 func CheckIfAllNegative(data []float64) bool {
 	for _,val := range data {
 		if val > 0.0 && val > 0.001{
