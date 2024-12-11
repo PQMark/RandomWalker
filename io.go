@@ -32,13 +32,13 @@ func PrepareMnistData(num int, numbers []int) (*Dataset, []int) {
 func GetLabelIndices(mnist *gomnist.MNIST, numbers []int, rows int) map[int][]int {
 	labelIndices := make(map[int][]int)
 
-	for i := 0; i < rows; i ++ {
+	for i := 0; i < rows; i++ {
 		label := int(mnist.TrainLabels.At(i, 0))
 
 		for _, n := range numbers {
 			if label == n {
-				labelIndices[label] = append(labelIndices[label], i) 
-				break 
+				labelIndices[label] = append(labelIndices[label], i)
+				break
 			}
 		}
 	}
@@ -48,14 +48,14 @@ func GetLabelIndices(mnist *gomnist.MNIST, numbers []int, rows int) map[int][]in
 
 func SampleInstance(num int, numbers []int, labelIndices map[int][]int) []int {
 	numLabels := len(numbers)
-	numPerLabel := num / numLabels    // floor
+	numPerLabel := num / numLabels // floor
 	allocation := make(map[int]int)
 	total := 0
 
 	for _, label := range numbers {
 		capcity := len(labelIndices[label])
-		
-		// If enough 
+
+		// If enough
 		if capcity >= numPerLabel {
 			allocation[label] = numPerLabel
 			total += numPerLabel
@@ -72,18 +72,18 @@ func SampleInstance(num int, numbers []int, labelIndices map[int][]int) []int {
 
 			// Distribute the remaining among others
 			if allocation[label] < len(labelIndices[label]) {
-				allocation[label] ++
-				remaining --
+				allocation[label]++
+				remaining--
 			}
 
-			if remaining == 0{
+			if remaining == 0 {
 				break
 			}
 		}
 	}
 
 	selectedIndices := []int{}
-	rand := rand.New(rand.NewSource(int64(46)))  	// 36  // 31:18
+	rand := rand.New(rand.NewSource(int64(46))) // 36  // 31:18
 
 	for label, count := range allocation {
 
@@ -106,25 +106,25 @@ func CreateDataset(mnist *gomnist.MNIST, selectedIndices []int, cols int) (*Data
 	dataset := &Dataset{
 		Features: make([]string, cols),
 		Instance: make([]*Instance, len(selectedIndices)),
-		Label: "MNIST",
+		Label:    "MNIST",
 	}
 
 	labels := make([]int, len(selectedIndices))
 
 	for i := 0; i < cols; i++ {
-        dataset.Features[i] = strconv.Itoa(i)  //fmt.Sprintf("pixel%d", i) 
-    }
+		dataset.Features[i] = strconv.Itoa(i) //fmt.Sprintf("pixel%d", i)
+	}
 
 	for i, row := range selectedIndices {
-		// make instance 
+		// make instance
 		instance := &Instance{
 			Features: make(map[string]float64, cols),
-			Label:  fmt.Sprintf("%d", int(mnist.TrainLabels.At(row, 0))),
+			Label:    fmt.Sprintf("%d", int(mnist.TrainLabels.At(row, 0))),
 		}
 
 		for col := 0; col < cols; col++ {
-            instance.Features[dataset.Features[col]] = mnist.TrainData.At(row, col)
-        }
+			instance.Features[dataset.Features[col]] = mnist.TrainData.At(row, col)
+		}
 
 		dataset.Instance[i] = instance
 		labels[i] = int(mnist.TrainLabels.At(row, 0))
@@ -132,7 +132,6 @@ func CreateDataset(mnist *gomnist.MNIST, selectedIndices []int, cols int) (*Data
 
 	return dataset, labels
 }
-
 
 func Write2Json(data interface{}, filename string) error {
 
@@ -148,18 +147,19 @@ func Write2Json(data interface{}, filename string) error {
 
 // colFeatures: True if cols are features while rows are instance
 // filepath is the path for csv
-func readCSV(filePath string, colFeatures bool, irrelevantCols, irrelevantRows string, featureIndex, groupIndex int) (*Dataset, []int) {
+func readCSV(method, filePath string, colFeatures bool, irrelevantCols, irrelevantRows string, featureIndex, groupIndex int) (*Dataset, []int) {
 	colFeaturesStr := strconv.FormatBool(colFeatures)
 	featureIndexStr := strconv.Itoa(featureIndex)
 	groupIndexStr := strconv.Itoa(groupIndex)
 
 	cmd := exec.Command(
-		"python3", "scripts/process_data.py", 
-		filePath, 
-		colFeaturesStr, 
+		"python3", "scripts/process_data.py",
+		method,
+		filePath,
+		colFeaturesStr,
 		irrelevantCols,
-		irrelevantRows, 
-		featureIndexStr, 
+		irrelevantRows,
+		featureIndexStr,
 		groupIndexStr,
 	)
 
@@ -176,7 +176,7 @@ func readCSV(filePath string, colFeatures bool, irrelevantCols, irrelevantRows s
 	jsonLabelName := fmt.Sprintf("%s_labels.json", baseName[:len(baseName)-len(filepath.Ext(baseName))])
 	jsonLabelPath := filepath.Join("temp/", jsonLabelName)
 
-	// read the json file 
+	// read the json file
 	jsonData, err := os.ReadFile(jsonDataPath)
 	if err != nil {
 		fmt.Printf("error unmarshalling JSON data: %v", err)
@@ -192,13 +192,13 @@ func readCSV(filePath string, colFeatures bool, irrelevantCols, irrelevantRows s
 	var dataset Dataset
 	if err := json.Unmarshal(jsonData, &dataset); err != nil {
 		fmt.Printf("error unmarshalling JSON data: %v", err)
-		return nil, nil 
+		return nil, nil
 	}
 
 	var labels []int
 	if err := json.Unmarshal(jsonLabel, &labels); err != nil {
 		fmt.Printf("error unmarshalling JSON data: %v", err)
-		return nil, nil 
+		return nil, nil
 	}
 
 	return &dataset, labels

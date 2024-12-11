@@ -3,8 +3,10 @@ import json
 import os
 from sklearn.preprocessing import LabelEncoder
 import argparse
+import sklearn.impute as impute
+import numpy as np
 
-def read_csv(filepath, col_features, irrelevant_cols, irrelevant_rows, feature_index, group_index):
+def read_csv(method, filepath, col_features, irrelevant_cols, irrelevant_rows, feature_index, group_index):
     '''
     col_features: True if cols are features, row instances
     irrelevant_cols: cols to delete, 1-based index
@@ -49,6 +51,11 @@ def read_csv(filepath, col_features, irrelevant_cols, irrelevant_rows, feature_i
     # reset index 
     df.reset_index(drop=True, inplace=True)
     df.columns = range(df.shape[1])
+
+    #Deal with missing values and reset index if needed
+    df = missingDrop(method, df)
+
+
     
     instances = []
 
@@ -87,6 +94,18 @@ def read_csv(filepath, col_features, irrelevant_cols, irrelevant_rows, feature_i
     with open(f"{filename}_labels.json", "w") as f:
         json.dump(labels.tolist(), f)
     
+
+def missingDrop(method, df):
+    if method == "remove instance":
+        df = df.dropna()
+        df.reset_index(drop=True, inplace=True)
+    elif method == "Mean imputation":
+        imputer = impute.SimpleImputer(missing_values = np.nan, strategy ='mean')
+        imputed_array = imputer.fit_transform(df)
+        df = pd.DataFrame(imputed_array, columns=df.colums, index=df.index)
+    else:
+        raise ValueError("Missing value droping method not expected.")
+
 
 def str2bool(v):
     if v.lower() == "true":

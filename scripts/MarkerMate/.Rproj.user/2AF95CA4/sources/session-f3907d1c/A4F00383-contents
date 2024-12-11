@@ -1,22 +1,21 @@
 #
-# This is the server logic of a Shiny web application. 
-# The server function handles reactive expressions, 
-# sets up output rendering, and responds to user input.
+# This is the server logic of a Shiny web application. You can run the
+# application by clicking 'Run App' above.
+#
+# Find out more about building applications with Shiny here:
+#
+#    https://shiny.posit.co/
 #
 
 library(shiny)
 library(shinyjs)
 
-# Define server logic required to draw a histogram and manage UI interactions
+# Define server logic required to draw a histogram
 function(input, output, session) {
   
-  # Reactive expression to read and store the uploaded data.
-  # This will run whenever 'input$file' changes.
   Data <- reactive({
-    req(input$file)  # Ensure a file has been uploaded before proceeding.
+    req(input$file)
     
-    # Use tryCatch to handle any errors when reading the CSV file.
-    # If an error occurs, it returns a "safeError".
     tryCatch(
       {
         df <- read.csv(input$file$datapath, 
@@ -31,13 +30,9 @@ function(input, output, session) {
     return(df)
   })
   
-  # A helper function to limit rows and columns for display.
-  # This is useful if the dataset is huge, so we only show 
-  # a small "preview" with head and tail rows and partial columns.
   limit <- function(df, max_r = 10, head_r = 5, tail_r = 5, 
                     max_c = 10, head_c = 5, tail_c = 5) {
-    # Limit rows first:
-    # If more than max_r rows, show head_r rows, a separator row of "-----", and tail_r rows.
+    # Limit rows
     if (nrow(df) > max_r) {
       df_rows <- rbind(
         head(df, head_r), 
@@ -48,8 +43,7 @@ function(input, output, session) {
       df_rows <- df
     }
     
-    # Then limit columns:
-    # If more than max_c columns, show first head_c columns, a "..." column, and last tail_c columns.
+    # Limit columns
     if (ncol(df_rows) > max_c) {
       first_cols <- df_rows[, 1:head_c, drop = FALSE]
       dots <- data.frame("..." = rep("...", nrow(df_rows)), stringsAsFactors = FALSE)
@@ -62,34 +56,25 @@ function(input, output, session) {
     return(df_cols)
   }
   
-  # Render the contents of the uploaded data as a table.
-  # Uses the 'Data()' reactive and 'limit()' function for a formatted preview.
   output$contents <- renderTable({
     df <- Data()
+    
     limited_df <- limit(df)
+    
     return(limited_df)
-  }, sanitize.text.function = function(x) x)  # Allow separator text ("-----" rows)
+  }, sanitize.text.function = function(x) x)  # Allow separator text
   
-  # Render text that shows which model is selected.
-  # 'req(input$model)' ensures that a model is selected before rendering.
   output$selected_model <- renderText({
     req(input$model)
     paste("You have selected:", input$model)
   })
   
-  # Render a UI block of parameters that depend on the selected model and data source.
-  # This UI is dynamically generated using 'renderUI' and a 'switch' statement on input$model.
   output$model_params <- renderUI({
-    # If data source is "upload", we require a file be uploaded before showing params.
     if (input$data_source == "upload") {
-      req(input$file)
-    }
-    
-    # Add a styled container for the model parameters.
+    req(input$file)}       # ensure the file is uploaded
+   
     div(
       style = "padding-left: 15px; border-left: 2px solid #ccc; margin-top: 10px;", 
-      
-      # Switch among different sets of parameters for each model:
       switch(input$model, 
              "Boruta" = {
                tagList(
@@ -106,7 +91,8 @@ function(input, output, session) {
                    label = span(style = "font-size: 12px;", "Number of Folds for CV"),
                    value = 5, 
                    min = 2
-                 )
+                 ), 
+              
                )
              }, 
              "Permutation" = {
@@ -114,7 +100,6 @@ function(input, output, session) {
                  numericInput(
                    inputId = "numIteration", 
                    label = span(style = "font-size: 12px;", "Number of Iterations"),
-                   # If data source is "mnist", default is 50, otherwise 30
                    value = if (input$data_source == "mnist") 50 else 30,  
                    min = 1,
                    max = 50
@@ -193,16 +178,14 @@ function(input, output, session) {
   })
     
   
-  # Render a UI for advanced parameters.
-  # These are collapsed by default and can be toggled by a button.
+  
   output$advanced_params <- renderUI({
-    # For advanced params, we require a model that uses these parameters.
+    #req(input$file)
     req(input$model %in% c("Boruta", "Permutation", "Recursive Feature Elimination"))
     
     tagList(
       useShinyjs(),
       
-      # A button to toggle the collapse of advanced parameters
       tags$button(
         type = "button", 
         class = "btn btn-info", 
@@ -211,13 +194,11 @@ function(input, output, session) {
         "Advanced Parameters"
       ),
     
-      # Collapsible panel containing the advanced parameters
       div(
         id = "advancedParams", 
         class = "collapse", 
         style = "margin-top: 10px;",
         
-        # Checkbox to toggle default optimization
         div(
           style = "margin-bottom: 10px;", 
           checkboxInput(
@@ -227,7 +208,6 @@ function(input, output, session) {
           )
         ),
         
-        # Selectize input for number of trees with a tooltip
         div(
           style = "margin-bottom: 10px;", 
           selectizeInput(
@@ -247,7 +227,6 @@ function(input, output, session) {
           )
         ),
         
-        # Selectize input for number of leaves with a tooltip
         div(
           style = "margin-bottom: 10px;", 
           selectizeInput(
@@ -267,7 +246,6 @@ function(input, output, session) {
           )
         ), 
         
-        # Selectize input for max depth with a tooltip
         div(
           style = "margin-bottom: 10px;", 
           selectizeInput(
@@ -287,10 +265,8 @@ function(input, output, session) {
           )
         ), 
         
-        # Additional inputs appear if the model is "Recursive Feature Elimination"
         if (input$model == "Recursive Feature Elimination") {
          tagList(
-          # Input for Initial Threshold (initial ratio of feature removal)
           div(
             style = "margin-bottom: 10px;", 
             selectizeInput(
@@ -310,7 +286,6 @@ function(input, output, session) {
             )
           ),
           
-          # Input for decay factor (how fast ratio decreases)
           div(
             style = "margin-bottom: 10px;", 
             selectizeInput(
@@ -340,15 +315,11 @@ function(input, output, session) {
   })
     
   
-  # After the UI is loaded, send a custom message to initialize tooltips using JavaScript.
   session$onFlushed(function() {
     session$sendCustomMessage(type = 'tooltip-init', message = NULL)
   })
   
   
-  # Observe the "Default Optimization" checkbox:
-  # If default_optimization is TRUE, disable certain input controls (Ntrees, max_depth, num_leaves).
-  # Otherwise, enable them.
   observeEvent(input$default_optimization, {
     if (input$default_optimization) {
       shinyjs::disable("num_leaves") 
@@ -361,26 +332,21 @@ function(input, output, session) {
     }
   })
   
-  # Observing the "goButton" (presumably a button to run the feature selection or 
-  # model training process) and retrieving the selected parameters.
   observeEvent(input$goButton, {
     
-    # Retrieve basic parameters from inputs
+    # basic parameters
     numIteration <- input$numIteration
     numFolds <- input$numFolds
     
-    # If the model is RFE, retrieve additional parameters
     if (input$model == "Recursive Feature Elimination") {
       numFeatures <- input$numFeatures
       
-      # Extract InitialThreshold from the input, use default if empty
       InitialThreshold <- if (!is.null(input$InitialThreshold) && input$InitialThreshold != "") {
         as.numeric(input$InitialThreshold)
       } else {
         0.2  # default
       }
       
-      # Extract decayFactor from the input, use default if empty
       decayFactor <- if (!is.null(input$decayFactor) && input$decayFactor != "") {
         as.numeric(input$decayFactor)
       } else {
@@ -392,11 +358,10 @@ function(input, output, session) {
         decayFactor = decayFactor
       )
       
-      # Here you could add code to run the RFE algorithm with the given parameters...
-      # (Optimization steps not fully implemented in this snippet.)
+      # Optimization
+      
     }
     
-    # Similar logic could be applied for other models, using their respective parameters.
     
   })
   
