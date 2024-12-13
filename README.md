@@ -4,7 +4,7 @@ Feature selection is the task of identifying a subset of the most relevant featu
 - Boruta
 - Recursive Feature Elimination  
 - Permutation
-- mRMR 
+- Minimun Redundancy Maximun Relevance (mRMR) 
 
 # Random Forest
 
@@ -40,7 +40,7 @@ and update results over each iteration
 ```
 Sample output with MNIST database, representing selection of best 50/784 features. 
 
-![Boruta MNIST visualization](results_images/Boruta_MNIST.png)
+![Boruta MNIST visualization](result_images/Boruta_MNIST.png)
 
 # RFECV
 
@@ -71,12 +71,36 @@ for i := range featuresToConsider {
 
 ```
 Sample output with MNIST with the best 50 features selected by RFECV:
+![RFECV MNIST visualization](result_images/RFE_MNIST.jpg)
+
 
 
 # Permutation
-Here is an example of `inline code` formatting in Markdown.
+Feature selection with permutation aims to permute features one at a time to evalute changes in model performance, resulting in a permutation score for each feature. Feature with positive permutation scores are selected. 
+
+To apply feature selection with permutation:
+- Generate a reference random forest with `trainRandomForestPermute()` 
+- Permute features with the `PermuteFeature()` function and train a new model with the permuted feature set
+- Obtain the average permutation scores for each feature over `numIterations` of model training 
+- Result contains average permutation scores in descending order
+
+
+
+Sample output with MNIST with the best features selected by permutation:
+
 
 # mRMR
+
+mRMR selects the best feature set with the least amount of redundancy. 
+
+To apply mRMR:
+
+- Standardize and discretize input dataset with the `mRMR_Discrete()` function
+    - Use `RelevanceMI()` to calculate mutual information between features and class labels to determine their relevancy
+    - Features with relevance MI of 0 are discarded
+    - Calculate and update redundancy information with `RedundancyMIUpdate()` and combine redundancy and relevance score with `PairwiseDeduction()`
+
+
 
 # Acknowledgements
 
