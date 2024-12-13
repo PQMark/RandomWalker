@@ -258,12 +258,14 @@ function(input, output, session) {
                 class = "glyphicon glyphicon-question-sign", 
                 style = "cursor: pointer; margin-left: 5px;", 
                 `data-toggle` = "tooltip",
-                title = "Default is 10 if left blank."
+                title = "Default will chancge according to input size,
+                default is 1 when less than 20 entries, 50 (more than 1000 entries), # entries / 20 (Between)"
               )
             ),
             choices = NULL,
             multiple = TRUE,
-            options = list(create = TRUE, placeholder = "Default: 10")
+            options = list(create = TRUE, 
+                           placeholder = "Default: See in question mark")
           )
         ), 
         
@@ -283,7 +285,7 @@ function(input, output, session) {
             ),
             choices = NULL,
             multiple = TRUE,
-            options = list(create = TRUE, placeholder = "Enter values (e.g. 20,30)")
+            options = list(create = TRUE, placeholder = "Default: 10")
           )
         ), 
         
@@ -354,12 +356,31 @@ function(input, output, session) {
       shinyjs::disable("num_leaves") 
       shinyjs::disable("max_depth")
       shinyjs::disable("Ntrees")
+      # set the default value
+      updateSelectizeInput(
+        session,
+        inputId = "Ntrees",
+        selected = c("0")
+      )
+      updateSelectizeInput(
+        session,
+        inputId = "num_leaves",
+        selected = c("0")
+      )
+      updateSelectizeInput(
+        session,
+        inputId = "max_depth",
+        selected = c("0")
+      )
+      
     } else {
       shinyjs::enable("num_leaves")
       shinyjs::enable("max_depth")
       shinyjs::enable("Ntrees")
     }
   })
+  
+
   
   # Observing the "goButton" (presumably a button to run the feature selection or 
   # model training process) and retrieving the selected parameters.
@@ -369,11 +390,35 @@ function(input, output, session) {
     numIteration <- input$numIteration
     numFolds <- input$numFolds
     
-    # If the model is RFE, retrieve additional parameters
-    if (input$model == "Recursive Feature Elimination") {
+    
+    
+    if(input$model == "Permutation"||
+             input$model == "Recursive Feature Elimination"||
+             input$model == "Boruta"){
+      Ntrees <- as.numeric(input$Ntrees)
+      num_leaves <- as.numeric(input$num_leaves)
+      max_depth <- as.numeric(input$max_depth)
+      
+      
+    }
+    
+    if (input$model == "mRMR"){
+      binSize <- input$binSize
+      maxFeatures <- input$maxFeatures
+      
+      
+      #打包 number of iterations
+      
+    }else if (input$model == "Permutation"||input$model == "Boruta"){
+      advanced_df <- expand.grid(Ntrees, num_leaves, max_depth),
+      
+      #解包advanced_df
+      #打包
+    }else if (input$model == "Recursive Feature Elimination") {
       numFeatures <- input$numFeatures
       
-      # Extract InitialThreshold from the input, use default if empty
+      
+      
       InitialThreshold <- if (!is.null(input$InitialThreshold) && input$InitialThreshold != "") {
         as.numeric(input$InitialThreshold)
       } else {
@@ -386,6 +431,8 @@ function(input, output, session) {
       } else {
         1.5  # default
       }
+      
+      
       
       lrParams <- list(
         InitialThreshold = InitialThreshold,
@@ -400,4 +447,10 @@ function(input, output, session) {
     
   })
   
+  # Convert to JSON
+  json_data <- toJSON(optimization, pretty = TRUE, auto_unbox = TRUE)
+  cat(json_data)
+  
+  # Optionally save to a file
+  write(json_data, file = "optimization.json")
 }

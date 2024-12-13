@@ -48,7 +48,7 @@ fluidPage(
                   label = tags$span(style = "font-size: 12px;", "Missing value processing method"),
                   choices = c(
                     "Delete the sample",
-                    "Take mean of the feature"
+                    "Replace missing value with mean from other samples"
                   )
                 )
               )
@@ -94,7 +94,11 @@ fluidPage(
             uiOutput("model_params"),
             
             # Panel for Optional Hps
-            uiOutput("advanced_params")
+            uiOutput("advanced_params"),
+            
+            #Run button
+            br(),
+            actionButton("startRun", "Run")
         ),
         
         # Main panel
