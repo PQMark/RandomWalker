@@ -100,7 +100,12 @@ To apply mRMR:
     - Features with relevance MI of 0 are discarded
     - Calculate and update redundancy information with `RedundancyMIUpdate()` and combine redundancy and relevance score with `PairwiseDeduction()`
 
+# Marker Mate 
 
+Marker mate is an application developed with RShiny to visualize the implementation of different feature selection methods on either user defined input dataset or the MNIST dataset.
+
+Video demonstration of Marker Mate:
+//
 
 # Acknowledgements
 
