@@ -61,3 +61,9 @@ type Lr struct {
 	initialThreshold float64
 	decayFactor      float64
 }
+
+type FoldMax struct {
+	FoldIndex    int
+	MaxFeature   FeatureStats
+	NumFeatures  int
+}

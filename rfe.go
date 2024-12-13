@@ -14,8 +14,11 @@ import (
 // Output: list of feature stats for each fold
 func RunRFE(data *Dataset, labels []int, numIteration, numFolds, numFeatures int, optimization Optimization, lrParams Lr) [][]FeatureStats {
 
-	fmt.Println("Running RFE")
-
+	fmt.Printf(
+		"Running RFECV across %d folds with elimination threshold %.2f and decay factor %.2f\n",
+		numFolds, lrParams.initialThreshold, lrParams.decayFactor,
+	)
+	
 	dataFolds, labelFolds := FoldSplit(data, labels, numFolds)
 	results := make([][]FeatureStats, numFolds)
 	var hyperGrid []HyperParameters
@@ -56,7 +59,7 @@ func RunRFE(data *Dataset, labels []int, numIteration, numFolds, numFeatures int
 
 		// RFE
 		featureStats := RFE(innerTrain, outerTest, innerLabel, outerLabel, numIteration, hyperParams.NTrees, hyperParams.MaxDepth, hyperParams.LeafSize, lrParams, numFeatures)
-
+		fmt.Printf("fold %d completed", i)
 		results[i] = featureStats
 	}
 
@@ -68,7 +71,7 @@ func RunRFE(data *Dataset, labels []int, numIteration, numFolds, numFeatures int
 // numIterations: train random forest over numIterations for each round of feature elimination
 // Output: list of feature stats (each feature count with associated avgF1 and error)
 func RFE(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, maxDepth, numLeaves int, lrParams Lr, numFeatures int) []FeatureStats {
-
+	fmt.Println("running RFE...")
 	results := make([]FeatureStats, 0)
 
 	var featuresToConsider []string
@@ -89,7 +92,7 @@ func RFE(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, ma
 
 		// Train the RF model numIteration times
 		for i := 0; i < numIteration; i++ {
-			fmt.Println("REF run:", run, "/", i)
+			// fmt.Println("RFE run:", run, "/", i)
 			trainRandomForestRFE(d, test, dLabel, tLabel, featuresToConsider, numEstimators, maxDepth, numLeaves, &tempResults, &featureImportances[i])
 		}
 
@@ -132,6 +135,7 @@ func RFE(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, ma
 		}
 
 		fmt.Println(featuresToConsider)
+		fmt.Println("number of features to consider:", len(featuresToConsider))
 	}
 }
 
@@ -339,4 +343,28 @@ func getFeaturesRFE(results [][]FeatureStats, mode, threshold int) FeatureStats 
 		AvgF1:    avgF1,
 		ErrorF1:  errorF1,
 	}
+}
+
+// Input: results slice containing feature stats for each fold
+// returns a slice containing the fold #, number of selected features, best feature stat for each fold
+func FindMaxAvgF1(results [][]FeatureStats) []FoldMax {
+	var maxStats []FoldMax
+
+	for i, fold := range results {
+		if len(fold) == 0 {
+			continue
+		}
+
+		maxFeature := fold[0]
+		for _, feature := range fold {
+			if feature.AvgF1 > maxFeature.AvgF1 {
+				maxFeature = feature
+			}
+		}
+
+		numFeatures := len(maxFeature.Features)
+		maxStats = append(maxStats, FoldMax{i, maxFeature, numFeatures})
+	}
+
+	return maxStats
 }

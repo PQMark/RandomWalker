@@ -2,25 +2,20 @@ package main
 
 import (
 	//"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
-	"encoding/json"
 	"os/exec"
 
 	randomforest "github.com/malaschitz/randomForest"
 )
 
-type FeaturesF1 struct {
-	FeatureSelected []string
-	F1              float64
-}
 
 // RShiny
 // File Reader
 // Try new FS method: mRMR
 // Replace the GridSearch with Bayesian Optimizor for faster speed
-
 
 func main() {
 
@@ -28,7 +23,7 @@ func main() {
 	// Boruta:
 	// TestSyntheziedData()
 
-	TestSyntheziedDataRFECV()
+	// TestSyntheziedDataRFECV()
 
 	//TestImageRFE()
 	// jsonDataPath := "testdata/METABRIC_RNA_Mutation.json"
@@ -43,16 +38,28 @@ func main() {
 	// RFE:
 	//TestSyntheziedDataRFE()
 
-
 	// ApplyRFEMNIST(400, []int{1, 2})
+	RealDataRFE()
 
-	cmd := exec.Command("python3", "scripts/visualization.py", "MNIST_FeatureImportances_300.json")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Run()
+	// cmd := exec.Command("python3", "scripts/visualization.py", "MNIST_FeatureImportances_300.json")
+	// cmd.Stdout = os.Stdout
+	// cmd.Stderr = os.Stderr
+	// cmd.Run()
 
 	// RealDatamRMR()
-}	
+}
+
+
+
+// func RealDataRFE() {
+
+// 	err := Write2Json(featureStats, "results.json")
+// 	if err != nil {
+// 		fmt.Println("Error writing to JSON file:", err)
+// 	} else {
+// 		fmt.Println("Results successfully written to results.json")
+// 	}
+// }
 
 func ApplyRFEMNIST(num int, features []int) {
 	d, l := PrepareMnistData(num, features)
@@ -62,57 +69,72 @@ func ApplyRFEMNIST(num int, features []int) {
 	}
 
 	numIteration := 50
-	numFolds := 5
+	numFolds := 2
 
 	results := RunRFE(d, l, numIteration, numFolds, 30, Optimization{Default: HyperParameters{
 		NTrees: 150,
 	}}, Lr{
-		InitialThreshold: 0.5,
-		decayFactor: 1.2,
+		initialThreshold: 0.5,
+		decayFactor:      1.2,
 	})
 
-	modes := []int{50, 100, 150, 300}
-	featureImportances := make(map[int]map[string]float64)
+	maxStats := FindMaxAvgF1(results)
+	for _, stat := range maxStats {
+		fmt.Printf("Fold %d: %+v\n", stat.FoldIndex, stat.MaxFeature, stat.NumFeatures)
+	}
 
-	for _, mode := range modes {
-		selectedFeatures := getFeaturesRFE(results, mode, 0)
-
-		featureImportances[mode] = make(map[string]float64)
-
-		x := ConvertData(d, selectedFeatures.Features)
-
-		forestWithFeatures := randomforest.Forest{
-			Data: randomforest.ForestData{
-				X:    x,
-				Class: l,
-			},
-		}
-		forestWithFeatures.Train(300)
-
-		// Record feature importances
-		for i, featureName := range selectedFeatures.Features {
-			featureImportances[mode][featureName] = forestWithFeatures.FeatureImportance[i]
+	for i, fold := range results {
+		filename := fmt.Sprintf("results_rfe_fold_%d.json", i)
+		err := Write2Json(fold, filename)
+		if err != nil {
+			fmt.Printf("Error writing to %s: %v\n", filename, err)
+		} else {
+			fmt.Printf("Results successfully written to %s\n", filename)
 		}
 	}
 
-	for mode, importanceMap := range featureImportances {
-		filename := fmt.Sprintf("MNIST_FeatureImportances_%d.json", mode)
-		if err := Write2Json(importanceMap, filename); err != nil {
-			fmt.Printf("Error writing JSON for mode %d: %v\n", mode, err)
-		}
-	}
+	// modes := []int{50, 100, 150, 300}
+	// featureImportances := make(map[int]map[string]float64)
 
-	//get JSON to python
-	cmd := exec.Command("python3", "scripts/visualization.py")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Run()
+	// for _, mode := range modes {
+	// 	selectedFeatures := getFeaturesRFE(results, mode, 0)
+
+	// 	featureImportances[mode] = make(map[string]float64)
+
+	// 	x := ConvertData(d, selectedFeatures.Features)
+
+	// 	forestWithFeatures := randomforest.Forest{
+	// 		Data: randomforest.ForestData{
+	// 			X:     x,
+	// 			Class: l,
+	// 		},
+	// 	}
+	// 	forestWithFeatures.Train(300)
+
+	// 	// Record feature importances
+	// 	for i, featureName := range selectedFeatures.Features {
+	// 		featureImportances[mode][featureName] = forestWithFeatures.FeatureImportance[i]
+	// 	}
+	// }
+
+	// for mode, importanceMap := range featureImportances {
+	// 	filename := fmt.Sprintf("MNIST_FeatureImportances_%d.json", mode)
+	// 	if err := Write2Json(importanceMap, filename); err != nil {
+	// 		fmt.Printf("Error writing JSON for mode %d: %v\n", mode, err)
+	// 	}
+	// }
+
+	// //get JSON to python
+	// cmd := exec.Command("python3", "scripts/visualization.py", "MNIST_FeatureImportances_300.json")
+	// cmd.Stdout = os.Stdout
+	// cmd.Stderr = os.Stderr
+	// cmd.Run()
 
 }
 
 func RealDatamRMR() {
 	filePath := "/Users/pengqiu/Desktop/GO/src/RandomWalker/testdata/METABRIC_RNA_Mutation.csv"
-	colFeatures := true 
+	colFeatures := true
 	irrelevantCols := "2,3,4,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31"
 	irrelevantRows := ""
 	featureIndex := 1
@@ -132,49 +154,101 @@ func RealDatamRMR() {
 	fmt.Println(results)
 }
 
+func RealDataRFE() {
+	jsonDataPath := "testdata/METABRIC_RNA_Mutation.json"
+	jsonLabelPath := "testdata/METABRIC_RNA_Mutation_labels.json"
+
+	jsonData, err := os.ReadFile(jsonDataPath)
+	if err != nil {
+		fmt.Printf("error unmarshalling JSON data: %v", err)
+	}
+
+	jsonLabel, err := os.ReadFile(jsonLabelPath)
+	if err != nil {
+		fmt.Printf("error unmarshalling JSON data: %v", err)
+	}
+
+	var dataset Dataset
+	if err := json.Unmarshal(jsonData, &dataset); err != nil {
+		fmt.Printf("error unmarshalling JSON data: %v", err)
+	}
+
+	var labels []int
+	if err := json.Unmarshal(jsonLabel, &labels); err != nil {
+		fmt.Printf("error unmarshalling JSON data: %v", err)
+	}
+
+	numIteration := 20
+	numFolds := 2
+
+	results := RunRFE(&dataset, labels, numIteration, numFolds, 1, Optimization{Default: HyperParameters{
+		NTrees: 150,
+	}}, Lr{
+		initialThreshold: 0.6,
+		decayFactor:      1.5,
+	})
+
+	for i, fold := range results {
+		filename := fmt.Sprintf("METABRIC_results_rfe_fold_%d.json", i)
+		err := Write2Json(fold, filename)
+		if err != nil {
+			fmt.Printf("Error writing to %s: %v\n", filename, err)
+		} else {
+			fmt.Printf("Results successfully written to %s\n", filename)
+		}
+	}
+
+	maxStats := FindMaxAvgF1(results)
+	for _, stat := range maxStats {
+		fmt.Printf("Fold %d: %+v\n", stat.FoldIndex, stat.MaxFeature, stat.NumFeatures)
+	}
+
+}
+
+
 func RealDataPermute() {
-    jsonDataPath := "temp/METABRIC_RNA_Mutation.json"
-    jsonLabelPath := "temp/METABRIC_RNA_Mutation_labels.json"
+	jsonDataPath := "temp/METABRIC_RNA_Mutation.json"
+	jsonLabelPath := "temp/METABRIC_RNA_Mutation_labels.json"
 
-    jsonData, err := os.ReadFile(jsonDataPath)
-    if err != nil {
-        fmt.Printf("error unmarshalling JSON data: %v", err)
-    }
+	jsonData, err := os.ReadFile(jsonDataPath)
+	if err != nil {
+		fmt.Printf("error unmarshalling JSON data: %v", err)
+	}
 
-    jsonLabel, err := os.ReadFile(jsonLabelPath)
-    if err != nil {
-        fmt.Printf("error unmarshalling JSON data: %v", err)
-    }
+	jsonLabel, err := os.ReadFile(jsonLabelPath)
+	if err != nil {
+		fmt.Printf("error unmarshalling JSON data: %v", err)
+	}
 
-    var dataset Dataset
-    if err := json.Unmarshal(jsonData, &dataset); err != nil {
-        fmt.Printf("error unmarshalling JSON data: %v", err)
-    }
+	var dataset Dataset
+	if err := json.Unmarshal(jsonData, &dataset); err != nil {
+		fmt.Printf("error unmarshalling JSON data: %v", err)
+	}
 
-    var labels []int
-    if err := json.Unmarshal(jsonLabel, &labels); err != nil {
-        fmt.Printf("error unmarshalling JSON data: %v", err)
-    }
+	var labels []int
+	if err := json.Unmarshal(jsonLabel, &labels); err != nil {
+		fmt.Printf("error unmarshalling JSON data: %v", err)
+	}
 
-    numIteration := 20
-    numEstimators := 500
-    maxDepth := 15
-    numLeaves := 2
-	lrParams := Lr{InitialThreshold: 0.5, decayFactor: 1.2}
+	numIteration := 20
+	numEstimators := 500
+	maxDepth := 15
+	numLeaves := 2
+	lrParams := Lr{initialThreshold: 0.5, decayFactor: 1.2}
 	numFeatures := 1
 
-    train, label, test, tLabel := SplitTrainTest(&dataset, labels, 0.75)
+	train, label, test, tLabel := SplitTrainTest(&dataset, labels, 0.75)
 
-    results := RFE(train, test, label, tLabel, numIteration, numEstimators, maxDepth, numLeaves, lrParams, numFeatures)
+	results := RFE(train, test, label, tLabel, numIteration, numEstimators, maxDepth, numLeaves, lrParams, numFeatures)
 
 	Write2Json(results, "Permutation_METABRIC_RNA_Mutation_20_500_15_2.json")
 
-    fmt.Println(results)
+	fmt.Println(results)
 }
 
 func RealDataBoruta() {
 	filePath := "/Users/pengqiu/Desktop/GO/src/RandomWalker/testdata/METABRIC_RNA_Mutation.csv"
-	colFeatures := true 
+	colFeatures := true
 	irrelevantCols := "2,3,4,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31"
 	irrelevantRows := ""
 	featureIndex := 1
@@ -365,7 +439,6 @@ func TestSyntheziedData() {
 	fmt.Println("Results:", finalResult)
 }
 
-
 // Image
 
 // func TestImage() {
@@ -417,21 +490,20 @@ func TestImageRFE() {
 	maxDepth := 0
 	numLeaves := 0
 
-
 	selectedFeatures, finalResult := Boruta(d, l, 50, 150, maxDepth, numLeaves)
 
 	featureImportances := make(map[string]float64)
 	x := ConvertData(d, selectedFeatures)
 	forestWithFeatures := randomforest.Forest{
 		Data: randomforest.ForestData{
-			X: x,
+			X:     x,
 			Class: l,
 		},
 	}
 	forestWithFeatures.Train(300)
 
-	for i := 0; i < len(selectedFeatures); i ++ {
-		featureName := selectedFeatures[i]		//d.Features[i]
+	for i := 0; i < len(selectedFeatures); i++ {
+		featureName := selectedFeatures[i] //d.Features[i]
 		featureImportances[featureName] = forestWithFeatures.FeatureImportance[i]
 	}
 
@@ -449,10 +521,8 @@ func TestImageRFE() {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Run()
-	
 
 }
-
 
 // func TestSyntheziedDataRFE() {
 // 	numInstances := 1000
@@ -587,7 +657,7 @@ func TestSyntheziedDataRFE() {
 	featureStats := RFE(train, test, trainLabels, testLabels, numIteration, numEstimators, maxDepth, numLeaves, Lr{}, 1)
 
 	fmt.Println("Results:", featureStats)
-	fmt.Println("Importances:", featureImportances)
+	// fmt.Println("Importances:", featureImportances)
 
 	err := Write2Json(featureStats, "results.json")
 	if err != nil {
@@ -597,76 +667,75 @@ func TestSyntheziedDataRFE() {
 	}
 }
 
-func TestSyntheziedDataRFECV() {
-	numInstances := 1000
-	dataset := &Dataset{
-		Features: []string{"x1", "x2", "x3", "x4", "x5", "noise1", "noise2"},
-		Instance: []*Instance{},
-		Label:    "label",
-	}
+// func TestSyntheziedDataRFECV() {
+// 	numInstances := 1000
+// 	dataset := &Dataset{
+// 		Features: []string{"x1", "x2", "x3", "x4", "x5", "noise1", "noise2"},
+// 		Instance: []*Instance{},
+// 		Label:    "label",
+// 	}
 
-	var labels []int
+// 	var labels []int
 
-	for i := 0; i < numInstances; i++ {
-		x1 := rand.NormFloat64() // Important feature
-		x2 := rand.NormFloat64() // Important feature
-		x3 := rand.NormFloat64() // Important feature
+// 	for i := 0; i < numInstances; i++ {
+// 		x1 := rand.NormFloat64() // Important feature
+// 		x2 := rand.NormFloat64() // Important feature
+// 		x3 := rand.NormFloat64() // Important feature
 
-		// Redundant features (linear combinations)
-		x4 := x1 + x2 // Redundant feature
-		x5 := x2 - x3 // Redundant feature
+// 		// Redundant features (linear combinations)
+// 		x4 := x1 + x2 // Redundant feature
+// 		x5 := x2 - x3 // Redundant feature
 
-		// Noise features
-		noise1 := rand.NormFloat64() + 3
-		noise2 := rand.NormFloat64() - 1
+// 		// Noise features
+// 		noise1 := rand.NormFloat64() + 3
+// 		noise2 := rand.NormFloat64() - 1
 
-		// Target variable (binary classification)
-		// Let's assume that if (x1 + x2 + x3) > threshold, label is 1 else 0
-		threshold := 0.0
-		sum := x1 + x2 + x3
-		label := 0
-		if sum > threshold {
-			label = 1
-		}
+// 		// Target variable (binary classification)
+// 		// Let's assume that if (x1 + x2 + x3) > threshold, label is 1 else 0
+// 		threshold := 0.0
+// 		sum := x1 + x2 + x3
+// 		label := 0
+// 		if sum > threshold {
+// 			label = 1
+// 		}
 
-		// Create an instance
-		instance := &Instance{
-			Features: map[string]float64{
-				"x1":     x1,
-				"x2":     x2,
-				"x3":     x3,
-				"x4":     x4,
-				"x5":     x5,
-				"noise1": noise1,
-				"noise2": noise2,
-			},
-			Label: fmt.Sprintf("%d", label),
-		}
+// 		// Create an instance
+// 		instance := &Instance{
+// 			Features: map[string]float64{
+// 				"x1":     x1,
+// 				"x2":     x2,
+// 				"x3":     x3,
+// 				"x4":     x4,
+// 				"x5":     x5,
+// 				"noise1": noise1,
+// 				"noise2": noise2,
+// 			},
+// 			Label: fmt.Sprintf("%d", label),
+// 		}
 
-		// Add instance and label to dataset
-		dataset.Instance = append(dataset.Instance, instance)
-		labels = append(labels, label)
-	}
+// 		// Add instance and label to dataset
+// 		dataset.Instance = append(dataset.Instance, instance)
+// 		labels = append(labels, label)
+// 	}
 
-	// Now, call your Boruta function
-	numIteration := 50
-	numEstimators := 100
-	// alpha := 0.05
-	maxDepth := 0
-	numLeaves := 0
+// 	// Now, call your Boruta function
+// 	numIteration := 50
+// 	numEstimators := 100
+// 	// alpha := 0.05
+// 	maxDepth := 0
+// 	numLeaves := 0
 
-	//train, label, test, tLabel := SplitTrainTest(dataset, labels, 0.75)
-	optimalFeatureCount := RFECV(dataset, labels, numIteration, numEstimators, maxDepth, numLeaves, 5, 0)
+// 	//train, label, test, tLabel := SplitTrainTest(dataset, labels, 0.75)
+// 	optimalFeatureCount := RFECV(dataset, labels, numIteration, numEstimators, maxDepth, numLeaves, 5, 0)
 
-	fmt.Println("Optimal Feature Count: ", optimalFeatureCount)
+// 	fmt.Println("Optimal Feature Count: ", optimalFeatureCount)
 
-	// err := Write2Json(featureStats, "results.json")
-	// if err != nil {
-	// 	fmt.Println("Error writing to JSON file:", err)
-	// } else {
-	// 	fmt.Println("Results successfully written to results.json")
-	// }
-}
+// err := Write2Json(featureStats, "results.json")
+// if err != nil {
+// 	fmt.Println("Error writing to JSON file:", err)
+// } else {
+// 	fmt.Println("Results successfully written to results.json")
+// }
 
 // func TestSyntheziedDataRFEFromCSV(filePath string) {
 // 	// Open the CSV file

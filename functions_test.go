@@ -15,11 +15,6 @@ import (
 	//"rfe"
 )
 
-// type Lr struct {
-// 	initialThreshold float64
-// 	decayFactor      float64
-// }
-
 type FeatureDecayTest struct {
 	features          []string // List of feature strings
 	numTotalFeatures  int      // Total number of features
@@ -1371,6 +1366,64 @@ func TestCalculateThreshold(t *testing.T) {
 	}
 }
 
+func TestFindMaxAvgF1(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    [][]FeatureStats
+		expected []FoldMax
+	}{
+		{
+			"Single fold with one feature",
+			[][]FeatureStats{
+				{
+					{Features: []string{"A"}, AvgF1: 0.75, ErrorF1: 0.1},
+				},
+			},
+			[]FoldMax{
+				{0, FeatureStats{Features: []string{"A"}, AvgF1: 0.75, ErrorF1: 0.1}, 1},
+			},
+		},
+		{
+			"Multiple features in folds",
+			[][]FeatureStats{
+				{
+					{Features: []string{"A"}, AvgF1: 0.75, ErrorF1: 0.1},
+					{Features: []string{"B"}, AvgF1: 0.80, ErrorF1: 0.05},
+				},
+				{
+					{Features: []string{"C"}, AvgF1: 0.65, ErrorF1: 0.2},
+					{Features: []string{"D"}, AvgF1: 0.78, ErrorF1: 0.15},
+				},
+			},
+			[]FoldMax{
+				{0, FeatureStats{Features: []string{"B"}, AvgF1: 0.80, ErrorF1: 0.05}, 1},
+				{1, FeatureStats{Features: []string{"D"}, AvgF1: 0.78, ErrorF1: 0.15}, 1},
+			},
+		},
+		{
+			"Empty fold list",
+			[][]FeatureStats{},
+			[]FoldMax{},
+		},
+		{
+			"Fold with no features",
+			[][]FeatureStats{
+				{},
+			},
+			[]FoldMax{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := FindMaxAvgF1(test.input)
+			if !equalSlices(result, test.expected) {
+				t.Errorf("Test %q failed: expected %v, got %v", test.name, test.expected, result)
+			}
+		})
+	}
+}
+
 // Helper function to compare slices of float64 with a small epsilon for floating point precision
 func equalFloat64(a, b []float64) bool {
 	if len(a) != len(b) {
@@ -1391,6 +1444,42 @@ func equal(a, b *[]string) bool {
 	}
 	for i := range *a {
 		if (*a)[i] != (*b)[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func equalSlices(a, b interface{}) bool {
+	if a == nil && b == nil {
+		return true
+	}
+
+	av, bv := reflect.ValueOf(a), reflect.ValueOf(b)
+
+	if av.Kind() != reflect.Slice || bv.Kind() != reflect.Slice {
+		return false
+	}
+
+	if av.Len() != bv.Len() {
+		return false
+	}
+
+	for i := 0; i < av.Len(); i++ {
+		avElem, bvElem := av.Index(i).Interface(), bv.Index(i).Interface()
+
+		// Handle float comparison with tolerance
+		if af, ok := avElem.(float64); ok {
+			if bf, ok := bvElem.(float64); ok {
+				if math.Abs(af-bf) > 1e-3 {
+					return false
+				}
+				continue
+			}
+		}
+
+		// Default comparison using reflect.DeepEqual
+		if !reflect.DeepEqual(avElem, bvElem) {
 			return false
 		}
 	}
