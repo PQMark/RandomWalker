@@ -23,37 +23,12 @@ fluidPage(
             radioButtons(
               inputId = "data_source",
               label = "Data Source",
-              choices = c("Upload CSV" = "upload", "Use MNIST Dataset" = "mnist"),
+              choices = c("Use MNIST Dataset" = "mnist"),
               selected = "upload"
             ),
+          
             
             # File input -- Upload file
-            conditionalPanel(
-              condition = "input.data_source == 'upload'",
-              tags$div(
-                style = "padding-left: 15px; border-left: 2px solid #ccc; margin-top: 10px;",
-                
-                # File Input
-                fileInput(
-                  inputId = "file", 
-                  label = tags$span(style = "font-size: 12px;", "Choose CSV File"),
-                  accept = c(".csv")
-                ),
-                
-                # Handling Missing Values
-                selectInput(
-                  inputId = "missing_method",
-                  label = tags$span(style = "font-size: 12px;", "Select Method"),
-                  choices = c(
-                    "Select a method..."='',
-                    "Impute with Mean" = "mean",
-                    "Impute with Median" = "median",
-                    "Impute with k-Nearest Neighbors (kNN)" = "knn"
-                  )
-                )
-                
-              )
-            ),
             
             # File input -- Use MNIST
             conditionalPanel(
@@ -93,7 +68,16 @@ fluidPage(
             uiOutput("model_params"),
             
             # Panel for Optional Hps
-            uiOutput("advanced_params")
+            uiOutput("advanced_params"), 
+            
+            # Run Button
+            div(style = "margin-top: 20px;",
+                actionButton(
+                  inputId = "goButton", 
+                  label = "Run", 
+                  class = "btn btn-primary"
+                )
+            )
         ),
         
         # Main panel
@@ -101,7 +85,16 @@ fluidPage(
           tableOutput("contents"), 
           br(), 
           h4("Selected Model:"), 
-          textOutput("selected_model")
+          textOutput("selected_model"), 
+          conditionalPanel(
+            condition = "input.data_source == 'mnist'",
+            imageOutput("feature_plot")
+          ), 
+          tags$div(
+            style = "margin-top: 20px;",
+            tags$p("This plot shows the feature importance for the selected model. ",
+                   "It helps visualize which features contribute most to the classification.")
+          )
         )
       ), 
   
