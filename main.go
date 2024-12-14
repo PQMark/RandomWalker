@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 
 	//"reflect"
 
@@ -57,7 +58,116 @@ func main() {
 	var labels []int
 	var h HyperParameters
 
-	flag := false
+	var (
+		numFolds       int
+		numEstimators  int
+		maxDepth       int
+		numLeaves      int
+		initialThreshold float64
+		decayFactor     float64
+		binSize         int
+		maxFeatures     int
+		err1             error
+		minFeatures		int
+	)
+	
+
+	_, err := os.Stat("temp/overall_params_R.json")
+	if os.IsNotExist(err) {
+		
+		fmt.Println("Please Use Global Path for File")
+
+		model, err := strconv.Atoi(os.Args[1])
+		Check(err)
+
+		filepath := os.Args[2]
+
+		numIteration, err2 := strconv.Atoi(os.Args[3])
+		Check(err2)
+
+		if model == 1 || model == 2 || model == 3 {
+			numFolds, err1 = strconv.Atoi(os.Args[4])
+			Check(err1)
+
+			numEstimators, err1 = strconv.Atoi(os.Args[5])
+			Check(err1)
+
+			maxDepth, err1 = strconv.Atoi(os.Args[6])
+			Check(err1)
+
+			numLeaves, err1 = strconv.Atoi(os.Args[7])
+			Check(err1)
+
+			if model == 2 {
+
+				minFeatures, err1 = strconv.Atoi(os.Args[8])
+				Check(err1)
+
+				initialThreshold, err1 = strconv.ParseFloat(os.Args[9], 64)
+				Check(err1)
+
+				decayFactor, err1 = strconv.ParseFloat(os.Args[10], 64)
+				Check(err1)
+			}
+		} else if model == 4 {
+			binSize, err1 = strconv.Atoi(os.Args[4])
+			Check(err1)
+
+			maxFeatures, err1 = strconv.Atoi(os.Args[5])
+			Check(err1)
+		}
+		
+
+		dataset, label := readCSV(filepath, true, "", "", 1, 1)
+
+		if model == 1 {
+			fmt.Println("You picked Boruta!")
+
+			results := RunBoruta(dataset, label, numIteration, numFolds, Optimization{
+				Default: HyperParameters{
+					NTrees: numEstimators,
+					MaxDepth: maxDepth,
+					LeafSize: numLeaves,
+				},
+			})
+
+			fmt.Println(results)
+		} else if model == 2 {
+			fmt.Println("You picked Recursive Feature Elimination!")
+
+			results := RunRFE(dataset, label, numIteration, numFolds, minFeatures, Optimization{
+				Default: HyperParameters{
+					NTrees: numEstimators,
+					MaxDepth: maxDepth,
+					LeafSize: numLeaves,
+				},
+			}, Lr{
+				initialThreshold: initialThreshold,
+				decayFactor: decayFactor,
+			})
+
+			fmt.Println(results)
+		}  else if model == 3 {
+			fmt.Println("You picked Permutation!")
+
+			trainData, trainLabel, testData, testLabel := SplitTrainTest(dataset, label, 0.8)
+
+			results := permutation(trainData, testData, trainLabel, testLabel, numIteration, numEstimators, maxDepth, numLeaves)
+
+			fmt.Println(results)
+		} else if model == 4 {
+			fmt.Println("You picked mRMR!")
+
+			results := RunmRMR(dataset, label, numIteration, binSize, maxFeatures)
+
+			fmt.Println(results)
+		} else {
+			panic("Choose model from 1, 2, 3, 4")
+		}
+
+	} else {
+
+		flag := false
 
 	// Read the JSON file
 	data, err := os.ReadFile("temp/overall_params_R.json")
@@ -92,6 +202,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error marshaling modified JSON: %v", err)
 	}
+
+	// delete file 
+	os.Remove("temp/overall_params_R.json")
 
 	// Parse the JSON
 	var params OverallParams
@@ -151,7 +264,7 @@ func main() {
 
 		lr := Lr{
 			initialThreshold: params.AdvancedParams.InitialThreshold,
-			decayFactor:      params.AdvancedParams.DecayFactor,
+			decayFactor: params.AdvancedParams.DecayFactor,
 		}
 
 		filename := "RFE_FeatureImportance.json"
@@ -196,6 +309,13 @@ func main() {
 
 	}
 
+	}
+
+
+	
+
+
+
 	//TestSyntheziedDataPermute()
 	// Boruta:
 	// TestSyntheziedData()
@@ -215,12 +335,18 @@ func main() {
 	// RFE:
 	//TestSyntheziedDataRFE()
 
-	ApplyRFEMNIST(400, []int{1, 2})
-	//RealDataRFE()
+	// ApplyRFEMNIST(400, []int{1, 2})
+	// RealDataRFE()
 
 	// ApplyMRMRMNIST(400, []int{1, 2, 9})
 
 	// RealDatamRMR()
+}
+
+func Check(err error) {
+	if err != nil {
+		panic(err)
+	}
 }
 
 // func RealDataRFE() {
