@@ -4,13 +4,16 @@
     "num_samples": 100,
     "digits": [1, 2]
   },
-  "method": "Boruta",
+  "method": "Recursive Feature Elimination",
   "model_params": {
-    "numIteration": 30
+    "numIteration": 50,
+    "numFeatures": 30
   },
   "advanced_params": {
     "Ntrees": 1000,
     "num_leaves": 0,
-    "max_depth": 0
+    "max_depth": 0,
+    "InitialThreshold": 0.2,
+    "decayFactor": 1.5
   }
 }

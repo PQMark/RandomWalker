@@ -9,7 +9,7 @@ Feature selection is the task of identifying a subset of the most relevant featu
 # Usage
 
 User should initialize the program with the following command line arguments:
-`./RandomWalker` `C1` `C2` `C3` `C4` `C5` `C6` 
+`./RandomWalker` `C1` `C2` `C3` `C4` `C5` `C6` `C7`
 
 `C1` Choose from the following feature selection methods:
 `Boruta`
@@ -28,16 +28,18 @@ User should initialize the program with the following command line arguments:
 `C3` Specify numIteration for model training
 Ex: 50 will train the model over 50 iterations
 
-`C4` Specify numEstimators for the number of trees generated
+`C4` Specify the number of folds for cross validation
+
+`C5` Specify numEstimators for the number of trees generated
 Ex: 100 will use 100 decision trees to train the model
 
-`C5` Specify maximun depth of tree
+`C6` Specify maximun depth of tree
 
-`C6` Specify number of leaves for each tree
+`C7` Specify number of leaves for each tree
 
 Example Input: 
 
-`./RandomForest Boruta "MNIST_dataset.csv" 50 200 10 10`
+`./RandomForest Boruta "MNIST_dataset.csv" 50 5 200 10 10`
 
 
 
