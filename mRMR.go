@@ -7,52 +7,54 @@ import (
 	randomforest "github.com/malaschitz/randomForest"
 )
 
-func RunmRMR(data *Dataset, labels []int, numIteration, numFolds, binSize, maxFeatures int) []FeaturesF1 {
+// RunmRMR executes the mRMR feature selection algorithm and evaluates the selected features 
+// using Random Forest and weighted F1-score as the metric.
+// Parameters:
+// - data: Dataset containing the features and instances.
+// - labels: Slice of labels corresponding to the dataset.
+// - numIteration: Number of iterations for model evaluation.
+// - binSize: Number of bins for mRMR discretization.
+// - maxFeatures: Maximum number of features to select. MRMR may give less. 
+// Returns:
+// - FeaturesF1: Struct containing the selected features and the average F1 score.
+func RunmRMR(data *Dataset, labels []int, numIteration, binSize, maxFeatures int) FeaturesF1 {
 
-	results := make([]FeaturesF1, numFolds)
-	dataFolds, labelFolds := FoldSplit(data, labels, numFolds)
+	trainData, trainLabels, testData, testLabels := SplitTrainTest(data, labels, 0.8)
 
-	for i := 0; i < numFolds; i++ {
+	trainDataConverted := ConvertData(trainData, trainData.Features)
 
-		innerTrain, innerLabel, outerTest, outerLabel := GetFoldData(dataFolds, labelFolds, i)
+	selectedFeaturesIdx, _, _ := mRMR_Discrete(trainDataConverted, trainLabels, binSize, maxFeatures)
+	selectedFeatures := getFeatures(trainData.Features, selectedFeaturesIdx)
 
-		innerTrainConverted := ConvertData(innerTrain, innerTrain.Features)
+	trainDataProcessed := ConvertData(trainData, selectedFeatures)
+    testDataProcessed := ConvertData(testData, selectedFeatures)
 
-		selectedFeaturesIdx, _, _ := mRMR_Discrete(innerTrainConverted, innerLabel, binSize, maxFeatures)
-		selectedFeatures := getFeatures(innerTrain.Features, selectedFeaturesIdx)
+	F1Scores := make([]float64, numIteration)
 
-		innerTrainProcessed := ConvertData(innerTrain, selectedFeatures)
-		outerTestConverted := ConvertData(outerTest, selectedFeatures)
+	for n := 0; n < numIteration; n++ {
+        // Initialize and train the Random Forest model
+        forest := randomforest.Forest{
+            Data: randomforest.ForestData{
+                X:     trainDataProcessed,
+                Class: trainLabels,
+            },
+        }
+        forest.Train(500) // Train with 500 trees (adjust as needed)
+        
+        // Predict on the test set
+        predictions := Predict(&forest, testDataProcessed)
+        
+        // Calculate the F1 score for this iteration
+        f1 := GetF1Score(predictions, testLabels)
+        F1Scores[n] = f1
+    }
 
-		F1Scores := make([]float64, numIteration)
+	avgF1 := Average(F1Scores)
 
-		for n := 0; n < numIteration; n++ {
-
-			// Train RF with selected features
-			forest := randomforest.Forest{
-				Data: randomforest.ForestData{
-					X:     innerTrainProcessed,
-					Class: innerLabel,
-				},
-			}
-			forest.Train(500)
-
-			// Evaluate the model on outer test
-			predictions := Predict(&forest, outerTestConverted)
-			f1 := GetF1Score(predictions, outerLabel)
-			F1Scores[n] = f1
-		}
-
-		avgF1 := Average(F1Scores)
-
-		results[i] = FeaturesF1{
-			FeatureSelected: selectedFeatures,
-			F1:              avgF1,
-		}
-
-	}
-
-	return results
+	return FeaturesF1{
+        FeatureSelected: selectedFeatures,
+        F1:              avgF1,
+    }
 }
 
 // for classification only now
@@ -113,8 +115,7 @@ func mRMR_Discrete(dataRaw [][]float64, class []int, binSize, maxFeatures int) (
 		//fmt.Println("Redundancy:", redundancy)
 
 		score := PairwiseDeduction(relevance, redundancy)
-		fmt.Println(score)
-
+		
 		if CheckIfAllNegative(score) {
 			break
 		}
