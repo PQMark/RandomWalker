@@ -14,7 +14,7 @@ def read_csv(filepath, col_features, irrelevant_cols, irrelevant_rows, feature_i
     make sure there is no duplication in feature names
     '''
     
-    os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "temp"))
+    os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "testdata"))
 
     filename = os.path.splitext(os.path.basename(filepath))[0]
 
@@ -50,6 +50,10 @@ def read_csv(filepath, col_features, irrelevant_cols, irrelevant_rows, feature_i
     df.reset_index(drop=True, inplace=True)
     df.columns = range(df.shape[1])
     
+    # Drop missing values
+
+    # Reset row index 
+
     instances = []
 
     #print(features)
@@ -98,6 +102,7 @@ def str2bool(v):
 
 def str2list(arg):
     if not arg.strip():
+        print("HIIII")
         return []
     else:
         return list(map(int, map(str.strip, arg.split(","))))

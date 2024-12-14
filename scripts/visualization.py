@@ -1,8 +1,31 @@
-import json
-import numpy as np 
-import matplotlib.pyplot as plt 
-import os
 import sys 
+import importlib
+import subprocess
+
+required_packages = ["json", "numpy", "matplotlib", "os", "sys"]
+
+for package in required_packages:
+    try:
+        # Try to import the package
+        importlib.import_module(package)
+        print(f"'{package}' is already installed.")
+    except ImportError:
+        print(f"'{package}' is NOT installed.")
+        if package in ["numpy", "matplotlib"]:  # These are not in the standard library
+            print(f"Attempting to install '{package}'...")
+            try:
+                # Use subprocess to run pip for installation
+                subprocess.run([sys.executable, "-m", "pip", "install", package], check=True)
+                print(f"'{package}' has been successfully installed.")
+            except subprocess.CalledProcessError as e:
+                print(f"Failed to install '{package}'. Error: {e}")
+        else:
+            print(f"'{package}' is part of Python's standard library and should not require installation.")
+
+import os
+import json
+import numpy as np
+import matplotlib.pyplot as plt
 
 os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "temp"))
 
@@ -57,4 +80,5 @@ cbar = fig.colorbar(ax2.imshow(heatmap.T, cmap="hot"), ax=ax2, ticks=[heatmap.mi
 cbar.ax.set_yticklabels(['Not important', 'Very important'], fontsize=14)
 ax2.axis("off")
 
-plt.show()
+base_name, _ = os.path.splitext(filename)
+plt.savefig(f"{base_name}_plot.png", dpi=300, bbox_inches='tight')

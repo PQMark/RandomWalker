@@ -9,6 +9,7 @@
 
 library(shiny)
 library(shinyjs)
+library(jsonlite)
 
 # Define server logic required to draw a histogram
 function(input, output, session) {
@@ -70,8 +71,6 @@ function(input, output, session) {
   })
   
   output$model_params <- renderUI({
-    if (input$data_source == "upload") {
-    req(input$file)}       # ensure the file is uploaded
    
     div(
       style = "padding-left: 15px; border-left: 2px solid #ccc; margin-top: 10px;", 
@@ -84,15 +83,8 @@ function(input, output, session) {
                    value = 30, 
                    min = 1,
                    max = 50
-                 ), 
+                 )
                  
-                 numericInput(
-                   inputId = "numFolds", 
-                   label = span(style = "font-size: 12px;", "Number of Folds for CV"),
-                   value = 5, 
-                   min = 2
-                 ), 
-              
                )
              }, 
              "Permutation" = {
@@ -103,13 +95,6 @@ function(input, output, session) {
                    value = if (input$data_source == "mnist") 50 else 30,  
                    min = 1,
                    max = 50
-                 ), 
-                 
-                 numericInput(
-                   inputId = "numFolds", 
-                   label = span(style = "font-size: 12px;", "Number of Folds for CV"),
-                   value = 5, 
-                   min = 2
                  )
                )
              }, 
@@ -121,13 +106,6 @@ function(input, output, session) {
                    value = if (input$data_source == "mnist") 50 else 30,  
                    min = 1,
                    max = 50
-                 ), 
-                 
-                 numericInput(
-                   inputId = "numFolds", 
-                   label = span(style = "font-size: 12px;", "Number of Folds for CV"),
-                   value = 5, 
-                   min = 2
                  ), 
                  
                  numericInput(
@@ -147,13 +125,6 @@ function(input, output, session) {
                    value = if (input$data_source == "mnist") 50 else 30,  
                    min = 1,
                    max = 50
-                 ), 
-                 
-                 numericInput(
-                   inputId = "numFolds", 
-                   label = span(style = "font-size: 12px;", "Number of Folds for CV"),
-                   value = 5, 
-                   min = 2
                  ), 
                  
                  numericInput(
@@ -198,15 +169,7 @@ function(input, output, session) {
         id = "advancedParams", 
         class = "collapse", 
         style = "margin-top: 10px;",
-        
-        div(
-          style = "margin-bottom: 10px;", 
-          checkboxInput(
-            inputId = "default_optimization",
-            label = "Default Optimization",
-            value = FALSE
-          )
-        ),
+  
         
         div(
           style = "margin-bottom: 10px;", 
@@ -222,7 +185,7 @@ function(input, output, session) {
               )
             ),
             choices = NULL,
-            multiple = TRUE,
+            multiple = FALSE,
             options = list(create = TRUE, placeholder = "Default: 1000")
           )
         ),
@@ -241,7 +204,7 @@ function(input, output, session) {
               )
             ),
             choices = NULL,
-            multiple = TRUE,
+            multiple = FALSE,
             options = list(create = TRUE, placeholder = "Default: 10")
           )
         ), 
@@ -260,7 +223,7 @@ function(input, output, session) {
               )
             ),
             choices = NULL,
-            multiple = TRUE,
+            multiple = FALSE,
             options = list(create = TRUE, placeholder = "Enter values (e.g. 20,30)")
           )
         ), 
@@ -332,37 +295,157 @@ function(input, output, session) {
     }
   })
   
+toggle_pic <- reactiveVal(FALSE)
+  
   observeEvent(input$goButton, {
     
-    # basic parameters
-    numIteration <- input$numIteration
-    numFolds <- input$numFolds
+    toggle_pic(FALSE)
+    
+    # check the temp folder
+    temp_dir <- normalizePath("../../temp", mustWork = FALSE)
+    if (!dir.exists(temp_dir)) {
+      dir.create(temp_dir, recursive = TRUE)
+    }
+    
+    # Initialize a list to store all parameters
+    overall_params <- list()
+    
+    # Dataset information
+    overall_params$data_source <- input$data_source
+    
+    if (input$data_source == "mnist") {
+        overall_params$dataset_params <- list(
+          num_samples = input$num_samples,
+          digits = as.numeric(input$digits)
+        )
+    } else {
+      # overall_params$dataset_params$file_path <- input$file$datapath
+      
+      save_dir <- ""
+      save_path <- file.path(save_dir, input$file$name)
+      
+      file.copy(input$file$datapath, save_path)
+      overall_params$dataset_params$file_path <- input$file$name
+      
+    }
+    
+    # Selected method
+    overall_params$method <- input$model
+    
+    # Shared param 
+    overall_params$model_params$numIteration <- input$numIteration
+    
+    # Shared advanced params for three of the models
+    if (input$model %in% c("Boruta", "Recursive Feature Elimination", "Permutation")) {
+        
+        # NTrees
+        overall_params$advanced_params$Ntrees <- if (!is.null(input$Ntrees) && input$Ntrees != "") {
+          as.numeric(input$Ntrees)
+        } else {
+          1000
+        }
+        
+        # NumLeaf
+        overall_params$advanced_params$num_leaves <- if (!is.null(input$num_leaves) && input$num_leaves != "") {
+          as.numeric(input$num_leaves)
+        } else {
+          0
+        }
+        
+        # Max-Depth
+        overall_params$advanced_params$max_depth <- if (!is.null(input$max_depth) && input$max_depth != "") {
+          as.numeric(input$max_depth)
+        } else {
+          0
+        }
+    }
+    
+    # Method-specific parameters
+    if (input$model == "mRMR") {
+      overall_params$model_params$binSize <- input$binSize
+      overall_params$model_params$maxFeatures <- input$maxFeatures
+    }
     
     if (input$model == "Recursive Feature Elimination") {
-      numFeatures <- input$numFeatures
+      overall_params$model_params$numFeatures <- input$numFeatures
       
-      InitialThreshold <- if (!is.null(input$InitialThreshold) && input$InitialThreshold != "") {
+      overall_params$advanced_params$InitialThreshold <- if (!is.null(input$InitialThreshold) && input$InitialThreshold != "") {
         as.numeric(input$InitialThreshold)
       } else {
-        0.2  # default
+        0.2  
       }
       
-      decayFactor <- if (!is.null(input$decayFactor) && input$decayFactor != "") {
+      overall_params$advanced_params$decayFactor <- if (!is.null(input$decayFactor) && input$decayFactor != "") {
         as.numeric(input$decayFactor)
       } else {
-        1.5  # default
+        1.5 
       }
-      
-      lrParams <- list(
-        InitialThreshold = InitialThreshold,
-        decayFactor = decayFactor
-      )
-      
-      # Optimization
-      
+    }
+    
+    # Boruta has no specific parameters
+    
+    
+    # store the parameters
+    json_overall_params <- toJSON(overall_params, auto_unbox = TRUE, pretty = TRUE)
+    json_file_path <- file.path(temp_dir, "overall_params_R.json")
+    write(json_overall_params, json_file_path)
+    
+    
+    # run GO
+    cur <- getwd()
+    go_path <- normalizePath("../../", mustWork = FALSE)
+    setwd(go_path)
+    system2("go", args = c("run", "."), wait = TRUE)
+    
+    setwd(cur)
+
+    # Construct image path based on the method
+    method_name <- input$model
+    if (method_name == "Recursive Feature Elimination") {
+      method_name <- "RFE"
+    }
+    img_filename <- paste0(method_name, "_FeatureImportance_plot.png")
+    img_path <- file.path("../../temp", img_filename)
+    img_path <- normalizePath(img_path, mustWork = FALSE)
+    
+    print(paste("Image Path:", img_path))
+    
+    if (input$data_source == "mnist" && file.exists(img_path)) {
+      toggle_pic(TRUE)
+    } else {
+      toggle_pic(FALSE)
+      if (input$data_source == "mnist") {
+        showNotification("Feature importance plot not found. Please ensure the Go script ran successfully.", type = "error")
+      }
     }
     
     
   })
+  
+  output$feature_plot <- renderImage({
+    req(toggle_pic())  # Only render if toggle_pic is TRUE
+    
+    # Construct the image path
+    method_name <- input$model
+    if (method_name == "Recursive Feature Elimination") {
+      method_name <- "RFE"
+    }
+    img_path <- normalizePath(file.path("../../temp", paste0(method_name, "_FeatureImportance_plot.png")), mustWork = FALSE)
+    
+    if (!file.exists(img_path)) {
+      warning(paste("Image path does not exist:", img_path))
+      return(NULL)
+    }
+    
+    print(paste("Rendering image from path:", img_path))
+    
+    list(
+      src = img_path,
+      contentType = "image/png",
+      alt = "Feature Importance Plot", 
+      width = "90%", 
+      height = "auto"
+    )
+  }, deleteFile = FALSE)
   
 }
