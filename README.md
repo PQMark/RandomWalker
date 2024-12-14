@@ -142,7 +142,7 @@ To apply mRMR:
 Marker mate is an application developed with RShiny to visualize the implementation of different feature selection methods on the MNIST dataset.
 
 Video demonstration of Marker Mate can be downloaded trough google drive:
-https://drive.google.com/uc?id=1VkYm8d5-HAkW-enFcEzI-_VrrLcn18cO&export=download
+[https://drive.google.com/uc?id=1VkYm8d5-HAkW-enFcEzI-_VrrLcn18cO&export=download](https://drive.google.com/file/d/1VkYm8d5-HAkW-enFcEzI-_VrrLcn18cO/view?usp=drive_link)
 
 # Acknowledgements
 
