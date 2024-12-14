@@ -6,6 +6,41 @@ Feature selection is the task of identifying a subset of the most relevant featu
 - Permutation
 - Minimun Redundancy Maximun Relevance (mRMR) 
 
+# Usage
+
+User should initialize the program with the following command line arguments:
+`./RandomWalker` `C1` `C2` `C3` `C4` `C5` `C6` 
+
+`C1` Choose from the following feature selection methods:
+`Boruta`
+`RFE`
+`Permutation`
+`mRMR`
+
+`C2` Specify input filepath
+**File Format**: Input file must be in CSV format
+**Header Row**: The first row should contain the names of each feature (column headers)
+**First Column**: The first column should contain unique identifiers for each sample
+**Data**: 
+- The data file must not contain any empty or missing values
+- Irrelevant values should be excluded from the dataset
+
+`C3` Specify numIteration for model training
+Ex: 50 will train the model over 50 iterations
+
+`C4` Specify numEstimators for the number of trees generated
+Ex: 100 will use 100 decision trees to train the model
+
+`C5` Specify maximun depth of tree
+
+`C6` Specify number of leaves for each tree
+
+Example Input: 
+
+`./RandomForest Boruta "MNIST_dataset.csv" 50 200 10 10`
+
+
+
 # Random Forest
 
 Random forest is implemented with hyperparameters such as the number of decision trees (`NTrees`), depth of the tree (`MaxDepth`), and size of the leaf (`LeafSize`) for training the model. 
