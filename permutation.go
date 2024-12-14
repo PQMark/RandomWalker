@@ -36,16 +36,25 @@ func ApplyPermuteMNIST(num int, features []int) {
 	cmd.Run()
 }
 
-// permutationParallel
-// Take as input
-func permutation(d, test *Dataset, dLabel, tLabel []int, startfeature, numFeatures, numIteration, numEstimators, maxDepth, numLeaves int, F1Reference float64) []FeatureAvgMean {
+func permutation(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) []FeatureAvgMean {
+
 	var featuresToConsider []string
 
 	// Initialize featuresToConsider to all the features
 	featuresToConsider = append(featuresToConsider, d.Features...)
 
+	if len(d.Instance) != len(dLabel) {
+		panic("Unequal size of training set and label set")
+	}
+
+	//Get the F1 score for the referenceRandomForest
+	F1Reference := trainRandomForestPermute(d, test, dLabel, tLabel, featuresToConsider, numEstimators, maxDepth, numLeaves)
+
+	//map to store average F1 scores for each features
+	numFeatures := len(featuresToConsider)
+
 	results := make([]FeatureAvgMean, numFeatures)
-	for j := startfeature; j < startfeature+numFeatures; j++ {
+	for j := 0; j < numFeatures; j++ {
 		F1Score := make([]float64, 0, numIteration)
 
 		for i := 0; i < numIteration; i++ {
@@ -67,13 +76,14 @@ func permutation(d, test *Dataset, dLabel, tLabel []int, startfeature, numFeatur
 		// Get the error
 		errorPermut := standardError(F1Score, avgF1)
 
-		results[j-startfeature] = FeatureAvgMean{
+		results[j] = FeatureAvgMean{
 			Feature:          featuresToConsider[j],
 			AvgPermutScore:   avgPermut,
 			ErrorPermutScore: errorPermut,
 		}
 	}
 	return results
+
 }
 
 // function on object d

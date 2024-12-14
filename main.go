@@ -16,35 +16,35 @@ import (
 )
 
 type DatasetParams struct {
-    NumSamples  int      `json:"num_samples,omitempty"`
-    Digits      []int    `json:"digits,omitempty"`
-    FilePath    string   `json:"file_path,omitempty"`
-    MissingMethod string `json:"missing_method,omitempty"`
+	NumSamples    int    `json:"num_samples,omitempty"`
+	Digits        []int  `json:"digits,omitempty"`
+	FilePath      string `json:"file_path,omitempty"`
+	MissingMethod string `json:"missing_method,omitempty"`
 }
 
 type ModelParams struct {
-    NumIteration    int     `json:"numIteration"`
-    NumFolds         int    `json:"numFolds"`
-    NumFeatures      int    `json:"numFeatures,omitempty"`
-    BinSize          int    `json:"binSize,omitempty"`
-    MaxFeatures      int    `json:"maxFeatures,omitempty"`
+	NumIteration int `json:"numIteration"`
+	NumFolds     int `json:"numFolds"`
+	NumFeatures  int `json:"numFeatures,omitempty"`
+	BinSize      int `json:"binSize,omitempty"`
+	MaxFeatures  int `json:"maxFeatures,omitempty"`
 }
 
 type AdvancedParams struct {
-    DefaultOptimization bool   `json:"default_optimization"`
-    Ntrees              []int  `json:"Ntrees,omitempty"`
-    NumLeaves           []int  `json:"num_leaves,omitempty"`
-    MaxDepth            []int  `json:"max_depth,omitempty"`
-	InitialThreshold float64 `json:"InitialThreshold,omitempty"`
-    DecayFactor      float64 `json:"decayFactor,omitempty"`
+	DefaultOptimization bool    `json:"default_optimization"`
+	Ntrees              []int   `json:"Ntrees,omitempty"`
+	NumLeaves           []int   `json:"num_leaves,omitempty"`
+	MaxDepth            []int   `json:"max_depth,omitempty"`
+	InitialThreshold    float64 `json:"InitialThreshold,omitempty"`
+	DecayFactor         float64 `json:"decayFactor,omitempty"`
 }
 
 type OverallParams struct {
-    DataSource    string         `json:"data_source"`
-    DatasetParams DatasetParams  `json:"dataset_params"`
-    Method        string         `json:"method"`
-    ModelParams   ModelParams    `json:"model_params"`
-    AdvancedParams AdvancedParams `json:"advanced_params"`
+	DataSource     string         `json:"data_source"`
+	DatasetParams  DatasetParams  `json:"dataset_params"`
+	Method         string         `json:"method"`
+	ModelParams    ModelParams    `json:"model_params"`
+	AdvancedParams AdvancedParams `json:"advanced_params"`
 }
 
 // RShiny
@@ -54,7 +54,7 @@ type OverallParams struct {
 
 func main() {
 
-	var dataset *Dataset 
+	var dataset *Dataset
 	var labels []int
 	var h HyperParameters
 
@@ -170,10 +170,10 @@ func main() {
 		flag := false
 
 	// Read the JSON file
-    data, err := os.ReadFile("temp/overall_params_R.json")
-    if err != nil {
-        log.Fatalf("Error reading JSON file: %v", err)
-    }
+	data, err := os.ReadFile("temp/overall_params_R.json")
+	if err != nil {
+		log.Fatalf("Error reading JSON file: %v", err)
+	}
 
 	// Parse the JSON into a map for modification
 	var jsonData map[string]interface{}
@@ -207,11 +207,11 @@ func main() {
 	os.Remove("temp/overall_params_R.json")
 
 	// Parse the JSON
-    var params OverallParams
-    err = json.Unmarshal(modifiedData, &params)
-    if err != nil {
-        log.Fatalf("Error parsing JSON: %v", err)
-    }
+	var params OverallParams
+	err = json.Unmarshal(modifiedData, &params)
+	if err != nil {
+		log.Fatalf("Error parsing JSON: %v", err)
+	}
 
 	if params.DataSource == "mnist" {
 		dataset, labels = PrepareMnistData(params.DatasetParams.NumSamples, params.DatasetParams.Digits)
@@ -225,7 +225,7 @@ func main() {
 
 	}
 
-	if params.Method == "mRMR"{
+	if params.Method == "mRMR" {
 		result := RunmRMR(dataset, labels, params.ModelParams.NumIteration, params.ModelParams.BinSize, params.ModelParams.MaxFeatures)
 
 		filename := "mRMR_FeatureImportance.json"
@@ -238,19 +238,19 @@ func main() {
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
 			cmd.Run()
-		} 
+		}
 	}
 
 	if params.Method == "Boruta" {
 
 		filename := "Boruta_FeatureImportance.json"
 
-		result, _ := Boruta(dataset, labels, params.ModelParams.NumIteration, params.AdvancedParams.Ntrees[0], params.AdvancedParams.MaxDepth[0], 
-		params.AdvancedParams.NumLeaves[0])
+		result, _ := Boruta(dataset, labels, params.ModelParams.NumIteration, params.AdvancedParams.Ntrees[0], params.AdvancedParams.MaxDepth[0],
+			params.AdvancedParams.NumLeaves[0])
 
-		// Write to json 
+		// Write to json
 		getFeatureImportances(dataset, labels, result, h, filename)
-		
+
 		if flag {
 			//get JSON to R
 			cmd := exec.Command("python3", "scripts/visualization.py", filename)
@@ -271,13 +271,13 @@ func main() {
 
 		trainData, trainLabel, testData, testLabel := SplitTrainTest(dataset, labels, 0.8)
 
-		results := RFE(trainData, testData, trainLabel, testLabel, params.ModelParams.NumIteration, params.AdvancedParams.Ntrees[0], 
-		params.AdvancedParams.MaxDepth[0], params.AdvancedParams.NumLeaves[0], lr, params.ModelParams.MaxFeatures)
-		
-		// Write to json 
-		f := results[int(float64(len(results)) * 0.2)]
+		results := RFE(trainData, testData, trainLabel, testLabel, params.ModelParams.NumIteration, params.AdvancedParams.Ntrees[0],
+			params.AdvancedParams.MaxDepth[0], params.AdvancedParams.NumLeaves[0], lr, params.ModelParams.MaxFeatures)
+
+		// Write to json
+		f := results[int(float64(len(results))*0.2)]
 		getFeatureImportances(dataset, labels, f.Features, h, filename)
-		
+
 		//get JSON to R
 		if flag {
 			cmd := exec.Command("python3", "scripts/visualization.py", filename)
@@ -292,13 +292,13 @@ func main() {
 
 		trainData, trainLabel, testData, testLabel := SplitTrainTest(dataset, labels, 0.8)
 
-		results := permutation(trainData, testData, trainLabel, testLabel, params.ModelParams.NumIteration, params.AdvancedParams.Ntrees[0], 
+		results := permutation(trainData, testData, trainLabel, testLabel, params.ModelParams.NumIteration, params.AdvancedParams.Ntrees[0],
 			params.AdvancedParams.MaxDepth[0], params.AdvancedParams.NumLeaves[0])
-		
-		// Write to json 
+
+		// Write to json
 		f := GetTopFeatures(results)
 		getFeatureImportances(dataset, labels, f, h, filename)
-		
+
 		//get JSON to python
 		if flag {
 			cmd := exec.Command("python3", "scripts/visualization.py", filename)
@@ -306,7 +306,7 @@ func main() {
 			cmd.Stderr = os.Stderr
 			cmd.Run()
 		}
-		
+
 	}
 
 	}
@@ -389,13 +389,13 @@ func getOptimization(params OverallParams) Optimization {
 		opt.DefaultGrid = true
 
 		return opt
-	} else{
-		
+	} else {
+
 		// Don't perform optimization
 		if isInt(params.AdvancedParams.MaxDepth) && isInt(params.AdvancedParams.NumLeaves) && isInt(params.AdvancedParams.Ntrees) {
 			opt.Optimize = false
 			opt.Default = HyperParameters{
-				NTrees: params.AdvancedParams.Ntrees[0],
+				NTrees:   params.AdvancedParams.Ntrees[0],
 				MaxDepth: params.AdvancedParams.MaxDepth[0],
 				LeafSize: params.AdvancedParams.NumLeaves[0],
 			}
@@ -424,7 +424,7 @@ func getCombination(T, L, D []int) []HyperParameters {
 		for _, l := range L {
 			for _, d := range D {
 				hyper := HyperParameters{
-					NTrees: t,
+					NTrees:   t,
 					LeafSize: l,
 					MaxDepth: d,
 				}
@@ -438,7 +438,7 @@ func getCombination(T, L, D []int) []HyperParameters {
 }
 
 func getFeatureImportances(d *Dataset, l []int, f []string, h HyperParameters, filename string) {
-	
+
 	if h.NTrees == 0 {
 		h.NTrees = 500
 	}
@@ -449,7 +449,7 @@ func getFeatureImportances(d *Dataset, l []int, f []string, h HyperParameters, f
 
 	forestWithFeatures := randomforest.Forest{
 		Data: randomforest.ForestData{
-			X:    x,
+			X:     x,
 			Class: l,
 		},
 		MaxDepth: h.MaxDepth,
@@ -467,24 +467,24 @@ func getFeatureImportances(d *Dataset, l []int, f []string, h HyperParameters, f
 	}
 }
 
-
-
 func ApplyMRMRMNIST(num int, features []int) {
 	d, l := PrepareMnistData(num, features)
-	
+
 	if err := Write2Json(d, "MNIST.json"); err != nil {
 		fmt.Println("Error writing JSON:", err)
 	}
 
 	binSize := 1000
 
-	results := RunmRMR(d, l, 10, binSize, 400)
+	ten := 10
+	fourhundred := 400
+
+	results := RunmRMR(d, l, ten, binSize, fourhundred)
 
 	fmt.Println(results)
 	//fmt.Println(results.FeatureSelected)
 	//fmt.Println(results.F1)
 }
-
 
 func ApplyRFEMNIST(num int, features []int) {
 	d, l := PrepareMnistData(num, features)
@@ -494,7 +494,7 @@ func ApplyRFEMNIST(num int, features []int) {
 	}
 
 	numIteration := 50
-	numFolds := 2
+	numFolds := 5
 
 	results := RunRFE(d, l, numIteration, numFolds, 30, Optimization{Default: HyperParameters{
 		NTrees: 150,
@@ -549,8 +549,9 @@ func ApplyRFEMNIST(num int, features []int) {
 	// 	}
 	// }
 
-	// //get JSON to python
-	// cmd := exec.Command("python3", "scripts/visualization.py", "MNIST_FeatureImportances_300.json")
+	//get JSON to python
+	// cmd := exec.Command("python3", "scripts/visualization.py", "MNIST_FeatureImportances_50.json")
+
 	// cmd.Stdout = os.Stdout
 	// cmd.Stderr = os.Stderr
 	// cmd.Run()
@@ -605,8 +606,8 @@ func RealDataRFE() {
 		fmt.Printf("error unmarshalling JSON data: %v", err)
 	}
 
-	numIteration := 20
-	numFolds := 2
+	numIteration := 30
+	numFolds := 5
 
 	results := RunRFE(&dataset, labels, numIteration, numFolds, 1, Optimization{Default: HyperParameters{
 		NTrees: 150,
@@ -629,9 +630,15 @@ func RealDataRFE() {
 	for _, stat := range maxStats {
 		fmt.Printf("Fold %d: %+v\n", stat.FoldIndex, stat.MaxFeature, stat.NumFeatures)
 	}
+	filename := fmt.Sprintf("maxStats_rfe.json")
+	error := Write2Json(maxStats, filename)
+	if error != nil {
+		fmt.Printf("Error writing to %s: %v\n", filename, err)
+	} else {
+		fmt.Printf("Results successfully written to %s\n", filename)
+	}
 
 }
-
 
 func RealDataPermute() {
 	jsonDataPath := "temp/METABRIC_RNA_Mutation.json"
