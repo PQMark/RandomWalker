@@ -1,6 +1,6 @@
 # A Feature Selection Bundle
 
-Feature selection is the task of identifying a subset of the most relevant features from a feature space to improve model training in machine learning. By eliminating non-consistent, redundant and irrelevant features, we reduce the number of input variables, retaining only the features that show the strongest relationship to the target variable. Here, we demonstrate 4 implementation of feature selection methods using the Random Forest learning model. To ensure stability of feature selection, user can specify the number of folds (`numFolds`) for k-fold cross-validation. 
+Feature selection is the task of identifying a subset of the most relevant features from a feature space to improve model training in machine learning. By eliminating non-consistent, redundant and irrelevant features, we reduce the number of input variables, retaining only the features that show the strongest relationship to the target variable. Here, we demonstrate 4 implementations of feature selection methods using the Random Forest learning model. To ensure stability of feature selection, user can specify the number of folds (`numFolds`) for k-fold cross-validation. 
 - Boruta
 - Recursive Feature Elimination  
 - Permutation
@@ -17,10 +17,10 @@ User should initialize the program with the following command line arguments:
 `Permutation`
 `mRMR`
 
-`C2` Specify input filepath
-**File Format**: Input file must be in CSV format
-**Header Row**: The first row should contain the names of each feature (column headers)
-**First Column**: The first column should contain unique identifiers for each sample
+`C2` Specify input filepath  
+**File Format**: Input file must be in CSV format  
+**Header Row**: The first row should contain the names of each feature (column headers)  
+**First Column**: The first column should contain unique identifiers for each sample  
 **Data**: 
 - The data file must not contain any empty or missing values
 - Irrelevant values should be excluded from the dataset
