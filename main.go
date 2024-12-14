@@ -11,7 +11,6 @@ import (
 	randomforest "github.com/malaschitz/randomForest"
 )
 
-
 // RShiny
 // File Reader
 // Try new FS method: mRMR
@@ -38,8 +37,8 @@ func main() {
 	// RFE:
 	//TestSyntheziedDataRFE()
 
-	// ApplyRFEMNIST(400, []int{1, 2})
-	RealDataRFE()
+	ApplyRFEMNIST(400, []int{1, 2})
+	//RealDataRFE()
 
 	// cmd := exec.Command("python3", "scripts/visualization.py", "MNIST_FeatureImportances_300.json")
 	// cmd.Stdout = os.Stdout
@@ -48,8 +47,6 @@ func main() {
 
 	// RealDatamRMR()
 }
-
-
 
 // func RealDataRFE() {
 
@@ -69,7 +66,7 @@ func ApplyRFEMNIST(num int, features []int) {
 	}
 
 	numIteration := 50
-	numFolds := 2
+	numFolds := 5
 
 	results := RunRFE(d, l, numIteration, numFolds, 30, Optimization{Default: HyperParameters{
 		NTrees: 150,
@@ -124,8 +121,9 @@ func ApplyRFEMNIST(num int, features []int) {
 	// 	}
 	// }
 
-	// //get JSON to python
-	// cmd := exec.Command("python3", "scripts/visualization.py", "MNIST_FeatureImportances_300.json")
+	//get JSON to python
+	// cmd := exec.Command("python3", "scripts/visualization.py", "MNIST_FeatureImportances_50.json")
+
 	// cmd.Stdout = os.Stdout
 	// cmd.Stderr = os.Stderr
 	// cmd.Run()
@@ -178,8 +176,8 @@ func RealDataRFE() {
 		fmt.Printf("error unmarshalling JSON data: %v", err)
 	}
 
-	numIteration := 20
-	numFolds := 2
+	numIteration := 30
+	numFolds := 5
 
 	results := RunRFE(&dataset, labels, numIteration, numFolds, 1, Optimization{Default: HyperParameters{
 		NTrees: 150,
@@ -202,9 +200,15 @@ func RealDataRFE() {
 	for _, stat := range maxStats {
 		fmt.Printf("Fold %d: %+v\n", stat.FoldIndex, stat.MaxFeature, stat.NumFeatures)
 	}
+	filename := fmt.Sprintf("maxStats_rfe.json")
+	error := Write2Json(maxStats, filename)
+	if error != nil {
+		fmt.Printf("Error writing to %s: %v\n", filename, err)
+	} else {
+		fmt.Printf("Results successfully written to %s\n", filename)
+	}
 
 }
-
 
 func RealDataPermute() {
 	jsonDataPath := "temp/METABRIC_RNA_Mutation.json"
