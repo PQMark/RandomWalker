@@ -229,10 +229,10 @@ func readCSV(filePath string, colFeatures bool, irrelevantCols, irrelevantRows s
 
 	baseName := filepath.Base(filePath)
 	jsonDataName := fmt.Sprintf("%s.json", baseName[:len(baseName)-len(filepath.Ext(baseName))])
-	jsonDataPath := filepath.Join("temp/", jsonDataName)
+	jsonDataPath := filepath.Join("testdata/", jsonDataName)
 
 	jsonLabelName := fmt.Sprintf("%s_labels.json", baseName[:len(baseName)-len(filepath.Ext(baseName))])
-	jsonLabelPath := filepath.Join("temp/", jsonLabelName)
+	jsonLabelPath := filepath.Join("testdata/", jsonLabelName)
 
 	// read the json file 
 	jsonData, err := os.ReadFile(jsonDataPath)
