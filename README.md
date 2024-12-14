@@ -35,25 +35,25 @@ For RFE:
 `C3` Specify numIteration for model training
 Ex: 50 will train the model over 50 iterations
 
-**For Boruta, Permutation and RFE:**
+**For Boruta, Permutation and RFE:**  
 `C4` Specify the number of folds for cross validation
 
-**For mRMR:**
+**For mRMR:**  
 `C4` Specify the binSize 
 
-**For Boruta, Permutation and RFE:**
+**For Boruta, Permutation and RFE:**  
 `C5` Specify numEstimators for the number of trees generated
 Ex: 100 will use 100 decision trees to train the model
 
-**For mRMR:**
+**For mRMR:**  
 `C5` Specify the maximun number of features
 
-**The following parameters are only needed for Boruta, Permutation and RFE:**
+**The following parameters are only needed for Boruta, Permutation and RFE:**  
 `C6` Specify maximun depth of tree
 
 `C7` Specify number of leaves for each tree
 
-**If running RFE, the following addtional parameter are needed:**
+**If running RFE, the following addtional parameter are needed:**  
 `C8` minimun number of features to select
 `C9` Initial threshold for feature elimination
 `C10` Feature elimination decay factor
