@@ -3,56 +3,47 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"runtime"
+	"os"
+	"os/exec"
 
 	randomforest "github.com/malaschitz/randomForest"
 )
 
-func permutation(d, test *Dataset, dLabel, tLabel []int, numIteration, numEstimators, maxDepth, numLeaves int) []FeatureAvgMean {
+func ApplyPermuteMNIST(num int, features []int) {
+	d, l := PrepareMnistData(num, features)
 
+	train, label, test, tLabel := SplitTrainTest(d, l, 0.75)
+
+	if err := Write2Json(d, "MNIST.json"); err != nil {
+		fmt.Println("Error writing JSON:", err)
+	}
+
+	numIteration := 50
+
+	results := permutation(train, test, label, tLabel, numIteration, 30, 10, 10)
+
+	for mode, importanceMap := range results {
+		filename := fmt.Sprintf("MNIST_FeatureImportances_%d.json", mode)
+		if err := Write2Json(importanceMap, filename); err != nil {
+			fmt.Printf("Error writing JSON for mode %d: %v\n", mode, err)
+		}
+	}
+
+	//get JSON to python
+	cmd := exec.Command("python3", "scripts/visualization.py", "MNIST_FeatureImportances_300.json")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Run()
+}
+
+// permutationParallel
+// Take as input
+func permutation(d, test *Dataset, dLabel, tLabel []int, startfeature, numFeatures, numIteration, numEstimators, maxDepth, numLeaves int, F1Reference float64) []FeatureAvgMean {
 	var featuresToConsider []string
 
 	// Initialize featuresToConsider to all the features
 	featuresToConsider = append(featuresToConsider, d.Features...)
 
-	if len(d.Instance) != len(dLabel) {
-		panic("Unequal size of training set and label set")
-	}
-
-	//Get the F1 score for the referenceRandomForest
-	F1Reference := trainRandomForestPermute(d, test, dLabel, tLabel, featuresToConsider, numEstimators, maxDepth, numLeaves)
-
-	//map to store average F1 scores for each features
-	numFeatures := len(featuresToConsider)
-	results := make([]FeatureAvgMean, 0, numFeatures)
-
-	numCPU := runtime.NumCPU()
-	featuresEachCPU := numFeatures / numCPU
-	c := make(chan []FeatureAvgMean, numCPU)
-
-	for i := 0; i < numCPU; i++ {
-		if i != numCPU-1 {
-			startfeature := i * featuresEachCPU
-			go permutationFeaturesParallel(d, test, dLabel, tLabel, featuresToConsider, startfeature, featuresEachCPU, numIteration, numEstimators, maxDepth, numLeaves, F1Reference, c)
-		} else {
-			numFeaturesLastCPU := numFeatures - featuresEachCPU*(numCPU-1)
-			startfeature := i * featuresEachCPU
-			go permutationFeaturesParallel(d, test, dLabel, tLabel, featuresToConsider, startfeature, numFeaturesLastCPU, numIteration, numEstimators, maxDepth, numLeaves, F1Reference, c)
-		}
-	}
-
-	for i := 0; i < numCPU; i++ {
-		resultTemp := <-c
-		results = append(results, resultTemp...)
-	}
-
-	return results
-
-}
-
-// permutationParallel
-// Take as input
-func permutationFeaturesParallel(d, test *Dataset, dLabel, tLabel []int, featuresToConsider []string, startfeature, numFeatures, numIteration, numEstimators, maxDepth, numLeaves int, F1Reference float64, c chan []FeatureAvgMean) {
 	results := make([]FeatureAvgMean, numFeatures)
 	for j := startfeature; j < startfeature+numFeatures; j++ {
 		F1Score := make([]float64, 0, numIteration)
@@ -82,7 +73,7 @@ func permutationFeaturesParallel(d, test *Dataset, dLabel, tLabel []int, feature
 			ErrorPermutScore: errorPermut,
 		}
 	}
-	c <- results
+	return results
 }
 
 // function on object d
