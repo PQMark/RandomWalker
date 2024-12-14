@@ -9,7 +9,14 @@ Feature selection is the task of identifying a subset of the most relevant featu
 # Usage
 
 User should initialize the program with the following command line arguments:
-`./RandomWalker` `C1` `C2` `C3` `C4` `C5` `C6` `C7`
+For mRMR:  
+`./RandomWalker` `C1` `C2` `C3` `C4`
+
+For Boruta and Permutation:  
+`./RandomWalker` `C1` `C2` `C3` `C4` `C5` `C6` `C7`  
+
+For RFE:  
+`./RandomWalker` `C1` `C2` `C3` `C4` `C5` `C6` `C7` `C8` `C9` `C10`
 
 `C1` Choose from the following feature selection methods:
 `Boruta`
@@ -28,16 +35,30 @@ User should initialize the program with the following command line arguments:
 `C3` Specify numIteration for model training
 Ex: 50 will train the model over 50 iterations
 
+**For Boruta, Permutation and RFE:**
 `C4` Specify the number of folds for cross validation
 
+**For mRMR:**
+`C4` Specify the binSize 
+
+**For Boruta, Permutation and RFE:**
 `C5` Specify numEstimators for the number of trees generated
 Ex: 100 will use 100 decision trees to train the model
 
+**For mRMR:**
+`C5` Specify the maximun number of features
+
+**The following parameters are only needed for Boruta, Permutation and RFE:**
 `C6` Specify maximun depth of tree
 
 `C7` Specify number of leaves for each tree
 
-Example Input: 
+**If running RFE, the following addtional parameter are needed:**
+`C8` minimun number of features to select
+`C9` Initial threshold for feature elimination
+`C10` Feature elimination decay factor
+
+Example Input for Boruta: 
 
 `./RandomForest Boruta "MNIST_dataset.csv" 50 5 200 10 10`
 
@@ -142,7 +163,7 @@ To apply mRMR:
 Marker mate is an application developed with RShiny to visualize the implementation of different feature selection methods on the MNIST dataset.
 
 Video demonstration of Marker Mate can be downloaded trough google drive:
-https://drive.google.com/uc?id=1VkYm8d5-HAkW-enFcEzI-_VrrLcn18cO&export=download
+[https://drive.google.com/uc?id=1VkYm8d5-HAkW-enFcEzI-_VrrLcn18cO&export=download](https://drive.google.com/file/d/1VkYm8d5-HAkW-enFcEzI-_VrrLcn18cO/view?usp=drive_link)
 
 # Acknowledgements
 
