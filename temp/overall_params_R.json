@@ -1,0 +1,16 @@
+{
+  "data_source": "mnist",
+  "dataset_params": {
+    "num_samples": 100,
+    "digits": [1, 2]
+  },
+  "method": "Boruta",
+  "model_params": {
+    "numIteration": 30
+  },
+  "advanced_params": {
+    "Ntrees": 1000,
+    "num_leaves": 0,
+    "max_depth": 0
+  }
+}
