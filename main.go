@@ -16,35 +16,35 @@ import (
 )
 
 type DatasetParams struct {
-	NumSamples    int    `json:"num_samples,omitempty"`
-	Digits        []int  `json:"digits,omitempty"`
-	FilePath      string `json:"file_path,omitempty"`
-	MissingMethod string `json:"missing_method,omitempty"`
+    NumSamples  int      `json:"num_samples,omitempty"`
+    Digits      []int    `json:"digits,omitempty"`
+    FilePath    string   `json:"file_path,omitempty"`
+    MissingMethod string `json:"missing_method,omitempty"`
 }
 
 type ModelParams struct {
-	NumIteration int `json:"numIteration"`
-	NumFolds     int `json:"numFolds"`
-	NumFeatures  int `json:"numFeatures,omitempty"`
-	BinSize      int `json:"binSize,omitempty"`
-	MaxFeatures  int `json:"maxFeatures,omitempty"`
+    NumIteration    int     `json:"numIteration"`
+    NumFolds         int    `json:"numFolds"`
+    NumFeatures      int    `json:"numFeatures,omitempty"`
+    BinSize          int    `json:"binSize,omitempty"`
+    MaxFeatures      int    `json:"maxFeatures,omitempty"`
 }
 
 type AdvancedParams struct {
-	DefaultOptimization bool    `json:"default_optimization"`
-	Ntrees              []int   `json:"Ntrees,omitempty"`
-	NumLeaves           []int   `json:"num_leaves,omitempty"`
-	MaxDepth            []int   `json:"max_depth,omitempty"`
-	InitialThreshold    float64 `json:"InitialThreshold,omitempty"`
-	DecayFactor         float64 `json:"decayFactor,omitempty"`
+    DefaultOptimization bool   `json:"default_optimization"`
+    Ntrees              []int  `json:"Ntrees,omitempty"`
+    NumLeaves           []int  `json:"num_leaves,omitempty"`
+    MaxDepth            []int  `json:"max_depth,omitempty"`
+	InitialThreshold float64 `json:"InitialThreshold,omitempty"`
+    DecayFactor      float64 `json:"decayFactor,omitempty"`
 }
 
 type OverallParams struct {
-	DataSource     string         `json:"data_source"`
-	DatasetParams  DatasetParams  `json:"dataset_params"`
-	Method         string         `json:"method"`
-	ModelParams    ModelParams    `json:"model_params"`
-	AdvancedParams AdvancedParams `json:"advanced_params"`
+    DataSource    string         `json:"data_source"`
+    DatasetParams DatasetParams  `json:"dataset_params"`
+    Method        string         `json:"method"`
+    ModelParams   ModelParams    `json:"model_params"`
+    AdvancedParams AdvancedParams `json:"advanced_params"`
 }
 
 // RShiny
@@ -54,7 +54,7 @@ type OverallParams struct {
 
 func main() {
 
-	var dataset *Dataset
+	var dataset *Dataset 
 	var labels []int
 	var h HyperParameters
 
@@ -68,7 +68,6 @@ func main() {
 		binSize         int
 		maxFeatures     int
 		err1             error
-		minFeatures		int
 	)
 	
 
@@ -100,7 +99,7 @@ func main() {
 
 			if model == 2 {
 
-				minFeatures, err1 = strconv.Atoi(os.Args[8])
+				maxFeatures, err1 = strconv.Atoi(os.Args[8])
 				Check(err1)
 
 				initialThreshold, err1 = strconv.ParseFloat(os.Args[9], 64)
@@ -135,7 +134,7 @@ func main() {
 		} else if model == 2 {
 			fmt.Println("You picked Recursive Feature Elimination!")
 
-			results := RunRFE(dataset, label, numIteration, numFolds, minFeatures, Optimization{
+			results := RunRFE(dataset, label, numIteration, numFolds, maxFeatures, Optimization{
 				Default: HyperParameters{
 					NTrees: numEstimators,
 					MaxDepth: maxDepth,
@@ -169,145 +168,145 @@ func main() {
 
 		flag := false
 
-	// Read the JSON file
-	data, err := os.ReadFile("temp/overall_params_R.json")
-	if err != nil {
-		log.Fatalf("Error reading JSON file: %v", err)
-	}
-
-	// Parse the JSON into a map for modification
-	var jsonData map[string]interface{}
-	err = json.Unmarshal(data, &jsonData)
-	if err != nil {
-		log.Fatalf("Error parsing JSON: %v", err)
-	}
-
-	// Modify the JSON (e.g., update scalar fields in "advanced_params")
-	if advancedParams, ok := jsonData["advanced_params"].(map[string]interface{}); ok {
-		// Update Ntrees
-		if ntrees, ok := advancedParams["Ntrees"].(float64); ok {
-			advancedParams["Ntrees"] = []float64{ntrees}
-		}
-		// Update num_leaves
-		if numLeaves, ok := advancedParams["num_leaves"].(float64); ok {
-			advancedParams["num_leaves"] = []float64{numLeaves}
-		}
-		// Update max_depth
-		if maxDepth, ok := advancedParams["max_depth"].(float64); ok {
-			advancedParams["max_depth"] = []float64{maxDepth}
-		}
-	}
-
-	modifiedData, err := json.Marshal(jsonData)
-	if err != nil {
-		log.Fatalf("Error marshaling modified JSON: %v", err)
-	}
-
-	// delete file 
-	os.Remove("temp/overall_params_R.json")
-
-	// Parse the JSON
-	var params OverallParams
-	err = json.Unmarshal(modifiedData, &params)
-	if err != nil {
-		log.Fatalf("Error parsing JSON: %v", err)
-	}
-
-	if params.DataSource == "mnist" {
-		dataset, labels = PrepareMnistData(params.DatasetParams.NumSamples, params.DatasetParams.Digits)
-
-		flag = true
-
-		// Write to json
-		if err := Write2Json(dataset, "MNIST.json"); err != nil {
-			fmt.Println("Error writing JSON:", err)
+		// Read the JSON file
+		data, err := os.ReadFile("temp/overall_params_R.json")
+		if err != nil {
+			log.Fatalf("Error reading JSON file: %v", err)
 		}
 
-	}
-
-	if params.Method == "mRMR" {
-		result := RunmRMR(dataset, labels, params.ModelParams.NumIteration, params.ModelParams.BinSize, params.ModelParams.MaxFeatures)
-
-		filename := "mRMR_FeatureImportance.json"
-
-		getFeatureImportances(dataset, labels, result.FeatureSelected, h, filename)
-
-		if flag {
-			//get JSON to python
-			cmd := exec.Command("python3", "scripts/visualization.py", filename)
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			cmd.Run()
+		// Parse the JSON into a map for modification
+		var jsonData map[string]interface{}
+		err = json.Unmarshal(data, &jsonData)
+		if err != nil {
+			log.Fatalf("Error parsing JSON: %v", err)
 		}
-	}
 
-	if params.Method == "Boruta" {
+		// Modify the JSON (e.g., update scalar fields in "advanced_params")
+		if advancedParams, ok := jsonData["advanced_params"].(map[string]interface{}); ok {
+			// Update Ntrees
+			if ntrees, ok := advancedParams["Ntrees"].(float64); ok {
+				advancedParams["Ntrees"] = []float64{ntrees}
+			}
+			// Update num_leaves
+			if numLeaves, ok := advancedParams["num_leaves"].(float64); ok {
+				advancedParams["num_leaves"] = []float64{numLeaves}
+			}
+			// Update max_depth
+			if maxDepth, ok := advancedParams["max_depth"].(float64); ok {
+				advancedParams["max_depth"] = []float64{maxDepth}
+			}
+		}
 
-		filename := "Boruta_FeatureImportance.json"
+		modifiedData, err := json.Marshal(jsonData)
+		if err != nil {
+			log.Fatalf("Error marshaling modified JSON: %v", err)
+		}
 
-		result, _ := Boruta(dataset, labels, params.ModelParams.NumIteration, params.AdvancedParams.Ntrees[0], params.AdvancedParams.MaxDepth[0],
+		// delete file 
+		os.Remove("temp/overall_params_R.json")
+
+		// Parse the JSON
+		var params OverallParams
+		err = json.Unmarshal(modifiedData, &params)
+		if err != nil {
+			log.Fatalf("Error parsing JSON: %v", err)
+		}
+
+		if params.DataSource == "mnist" {
+			dataset, labels = PrepareMnistData(params.DatasetParams.NumSamples, params.DatasetParams.Digits)
+
+			flag = true
+
+			// Write to json
+			if err := Write2Json(dataset, "MNIST.json"); err != nil {
+				fmt.Println("Error writing JSON:", err)
+			}
+
+		}
+
+		if params.Method == "mRMR"{
+			result := RunmRMR(dataset, labels, params.ModelParams.NumIteration, params.ModelParams.BinSize, params.ModelParams.MaxFeatures)
+
+			filename := "mRMR_FeatureImportance.json"
+
+			getFeatureImportances(dataset, labels, result.FeatureSelected, h, filename)
+
+			if flag {
+				//get JSON to python
+				cmd := exec.Command("python3", "scripts/visualization.py", filename)
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				cmd.Run()
+			} 
+		}
+
+		if params.Method == "Boruta" {
+
+			filename := "Boruta_FeatureImportance.json"
+
+			result, _ := Boruta(dataset, labels, params.ModelParams.NumIteration, params.AdvancedParams.Ntrees[0], params.AdvancedParams.MaxDepth[0], 
 			params.AdvancedParams.NumLeaves[0])
 
-		// Write to json
-		getFeatureImportances(dataset, labels, result, h, filename)
-
-		if flag {
-			//get JSON to R
-			cmd := exec.Command("python3", "scripts/visualization.py", filename)
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			cmd.Run()
-		}
-	}
-
-	if params.Method == "Recursive Feature Elimination" {
-
-		lr := Lr{
-			initialThreshold: params.AdvancedParams.InitialThreshold,
-			decayFactor: params.AdvancedParams.DecayFactor,
+			// Write to json 
+			getFeatureImportances(dataset, labels, result, h, filename)
+			
+			if flag {
+				//get JSON to R
+				cmd := exec.Command("python3", "scripts/visualization.py", filename)
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				cmd.Run()
+			}
 		}
 
-		filename := "RFE_FeatureImportance.json"
+		if params.Method == "Recursive Feature Elimination" {
 
-		trainData, trainLabel, testData, testLabel := SplitTrainTest(dataset, labels, 0.8)
+			lr := Lr{
+				initialThreshold: params.AdvancedParams.InitialThreshold,
+				decayFactor: params.AdvancedParams.DecayFactor,
+			}
 
-		results := RFE(trainData, testData, trainLabel, testLabel, params.ModelParams.NumIteration, params.AdvancedParams.Ntrees[0],
+			filename := "RFE_FeatureImportance.json"
+
+			trainData, trainLabel, testData, testLabel := SplitTrainTest(dataset, labels, 0.8)
+
+			results := RFE(trainData, testData, trainLabel, testLabel, params.ModelParams.NumIteration, params.AdvancedParams.Ntrees[0], 
 			params.AdvancedParams.MaxDepth[0], params.AdvancedParams.NumLeaves[0], lr, params.ModelParams.MaxFeatures)
-
-		// Write to json
-		f := results[int(float64(len(results))*0.2)]
-		getFeatureImportances(dataset, labels, f.Features, h, filename)
-
-		//get JSON to R
-		if flag {
-			cmd := exec.Command("python3", "scripts/visualization.py", filename)
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			cmd.Run()
-		}
-	}
-
-	if params.Method == "Permutation" {
-		filename := "Permutation_FeatureImportance.json"
-
-		trainData, trainLabel, testData, testLabel := SplitTrainTest(dataset, labels, 0.8)
-
-		results := permutation(trainData, testData, trainLabel, testLabel, params.ModelParams.NumIteration, params.AdvancedParams.Ntrees[0],
-			params.AdvancedParams.MaxDepth[0], params.AdvancedParams.NumLeaves[0])
-
-		// Write to json
-		f := GetTopFeatures(results)
-		getFeatureImportances(dataset, labels, f, h, filename)
-
-		//get JSON to python
-		if flag {
-			cmd := exec.Command("python3", "scripts/visualization.py", filename)
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			cmd.Run()
+			
+			// Write to json 
+			f := results[int(float64(len(results)) * 0.2)]
+			getFeatureImportances(dataset, labels, f.Features, h, filename)
+			
+			//get JSON to R
+			if flag {
+				cmd := exec.Command("python3", "scripts/visualization.py", filename)
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				cmd.Run()
+			}
 		}
 
-	}
+		if params.Method == "Permutation" {
+			filename := "Permutation_FeatureImportance.json"
+
+			trainData, trainLabel, testData, testLabel := SplitTrainTest(dataset, labels, 0.8)
+
+			results := permutation(trainData, testData, trainLabel, testLabel, params.ModelParams.NumIteration, params.AdvancedParams.Ntrees[0], 
+				params.AdvancedParams.MaxDepth[0], params.AdvancedParams.NumLeaves[0])
+			
+			// Write to json 
+			f := GetTopFeatures(results)
+			getFeatureImportances(dataset, labels, f, h, filename)
+			
+			//get JSON to python
+			if flag {
+				cmd := exec.Command("python3", "scripts/visualization.py", filename)
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				cmd.Run()
+			}
+			
+		}
 
 	}
 
